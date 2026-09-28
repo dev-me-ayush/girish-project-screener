@@ -43,4 +43,4 @@ USER nextjs
 
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+CMD ["node", "-e", "process.env.HOSTNAME = '0.0.0.0'; require('./server.js');"]
