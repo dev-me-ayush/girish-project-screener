@@ -11,7 +11,10 @@ import { Testimonials } from "@/components/testimonials";
 import { TickerTape } from "@/components/ticker-tape";
 import { getScreenerStocks } from "@/lib/stocks";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
+
   const stocks = await getScreenerStocks();
 
   return (

@@ -18,7 +18,9 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+ENV DATABASE_URL="postgresql://placeholder:placeholder@ep-placeholder.us-east-1.aws.neon.tech/neondb?sslmode=require"
 RUN pnpm build
+
 
 FROM node:20-alpine AS runner
 WORKDIR /app
