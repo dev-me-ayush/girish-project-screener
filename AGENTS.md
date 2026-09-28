@@ -80,3 +80,16 @@ Run the production build only when the change is genuinely large or systemic: a 
 
 Say plainly which checks you ran and which you skipped, and anything that therefore went unverified.
 
+## Production AWS Deployment
+
+- **Deployment Type**: AWS App Runner (Containerized Next.js 15 Standalone)
+- **Region**: `ap-south-1` (Mumbai)
+- **Live URL**: `https://eizeujhpgz.ap-south-1.awsapprunner.com`
+- **Active Service ID**: `4d5be7400d7f47aebc8744ae37b026db`
+- **Service ARN**: `arn:aws:apprunner:ap-south-1:513329232477:service/girish-screener/4d5be7400d7f47aebc8744ae37b026db`
+- **ECR Repository**: `513329232477.dkr.ecr.ap-south-1.amazonaws.com/girish-screener:latest`
+- **Secrets Manager**: `tessera/production` (`DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `NEON_BRANCH`, `NEON_PROJECT_ID`)
+- **AutoScaling**: `girish-screener-scaling` (`min_size: 1`, `max_size: 2` — always active, zero cold start)
+- **Health Check Probe**: HTTP `GET /api/health` on port `3000` (Interval: 5s, Timeout: 4s)
+- **Host Binding Directive**: `HOSTNAME="0.0.0.0"` enforced inside container CMD to ensure App Runner and local health probes bind to all interfaces.
+
