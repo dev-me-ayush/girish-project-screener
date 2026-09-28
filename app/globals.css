@@ -1,26 +1,229 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ink: #070908;
+  --color-ink-raised: #0c100e;
+  --color-panel: #101613;
+  --color-line: #1e2622;
+  --color-line-bright: #2c3831;
+  --color-paper: #edf1ed;
+  --color-muted: #8a978e;
+  --color-faint: #5c6760;
+  --color-signal: #4ade9b;
+  --color-signal-dim: #1b4d38;
+  --color-amber: #f0c26a;
+  --color-drop: #f0687e;
+
+  --font-display: var(--font-instrument), var(--font-tiro);
+  --font-sans: var(--font-geist), var(--font-mukta);
+  --font-mono: var(--font-jetbrains);
+
+  --radius-card: 0.75rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: var(--color-ink);
+    color: var(--color-paper);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--color-signal) 30%, transparent);
+    color: var(--color-paper);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-signal);
+    outline-offset: 3px;
+    border-radius: 2px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@utility hairline {
+  border: 1px solid var(--color-line);
+}
+
+/* Faint phosphor bloom behind the top of the page. */
+@utility bloom {
+  position: relative;
+  isolation: isolate;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: -30% -10% auto -10%;
+    height: 70rem;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        38rem 26rem at 22% 18%,
+        color-mix(in oklab, var(--color-signal) 13%, transparent),
+        transparent 70%
+      ),
+      radial-gradient(
+        32rem 22rem at 82% 8%,
+        color-mix(in oklab, #4a7fd4 9%, transparent),
+        transparent 70%
+      );
+    mask-image: linear-gradient(to bottom, black, transparent 72%);
+  }
+}
+
+/* Engineering grid, barely there. */
+@utility graph {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--color-line) 70%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--color-line) 70%, transparent) 1px, transparent 1px);
+  background-size: 4.5rem 4.5rem;
+  mask-image: radial-gradient(60% 50% at 50% 30%, black, transparent 78%);
+}
+
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+@utility tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 1.25rem, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sweep {
+  0% {
+    transform: translate3d(0, -110%, 0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, 420%, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes blip {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.82);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes drift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(0, -1.5rem, 0);
+  }
+}
+
+@keyframes tape {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@utility rise {
+  animation: rise 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+@utility tape-track {
+  animation: tape 46s linear infinite;
+}
+
+@utility fade-in {
+  animation: fade 1s ease both;
+  animation-delay: var(--delay, 0ms);
+}
+
+@utility sweep-line {
+  animation: sweep 3.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation-delay: var(--delay, 0ms);
+}
+
+@utility blip {
+  animation: blip 2.2s ease-in-out infinite;
+  animation-delay: var(--delay, 0ms);
+}
+
+@utility drift {
+  animation: drift 9s ease-in-out infinite alternate;
+}
+
+/* Scroll-triggered reveals, CSS only, progressively enhanced. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      animation: rise 1ms linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover calc(16% + var(--step, 0) * 5%);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /* The global reset above would freeze the tape at -50%, hiding the first
+     half of the list. Park it at the start instead. */
+  .tape-track {
+    animation: none !important;
+    transform: none !important;
+  }
 }
