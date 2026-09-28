@@ -17,18 +17,16 @@ export default async function SignInPage() {
   const sessionUser = cookieStore.get("session_user")?.value;
 
   if (sessionUser) {
-    redirect("/dashboard");
+    redirect("/dashboard/overview");
   }
   return (
-    <div className="bloom relative flex min-h-dvh flex-col overflow-hidden">
-      <div className="graph pointer-events-none absolute inset-0 -z-10" />
-
+    <div className="relative flex min-h-dvh flex-col bg-white text-black">
       <header className="mx-auto w-full max-w-6xl px-5 py-6 sm:px-8">
         <Link
           href="/"
-          className="inline-flex items-center gap-2.5 text-paper transition-opacity hover:opacity-80"
+          className="inline-flex items-center gap-2.5 text-black transition-opacity hover:opacity-80"
         >
-          <Logo className="h-7 w-7 text-signal" />
+          <Logo className="h-7 w-7 text-black" />
           <Wordmark />
         </Link>
       </header>
@@ -37,15 +35,14 @@ export default async function SignInPage() {
         <div className="mx-auto grid w-full max-w-5xl gap-14 lg:grid-cols-12 lg:items-center">
           <div className="rise lg:col-span-6 lg:col-start-3">
             <div className="mx-auto w-full max-w-sm">
-              <h1 className="font-display text-5xl leading-[1.02] tracking-[-0.02em]">
+              <h1 className="font-display text-4xl sm:text-5xl font-bold tracking-tight text-black">
                 Welcome back
               </h1>
               <p className="mt-4 text-sm leading-relaxed text-muted">
-                Sign in to pick up where you left off. Your screens, alerts and
-                watchlists are exactly as you left them.
+                Sign in to access your equities workspace, screens, and watchlists.
               </p>
 
-              <div className="mt-10">
+              <div className="mt-8">
                 <SignInForm />
               </div>
 
@@ -53,14 +50,14 @@ export default async function SignInPage() {
                 Signing in means you accept our{" "}
                 <Link
                   href="#"
-                  className="text-muted underline underline-offset-4 transition-colors hover:text-paper"
+                  className="text-muted underline underline-offset-4 transition-colors hover:text-black"
                 >
                   Terms
                 </Link>{" "}
                 and{" "}
                 <Link
                   href="#"
-                  className="text-muted underline underline-offset-4 transition-colors hover:text-paper"
+                  className="text-muted underline underline-offset-4 transition-colors hover:text-black"
                 >
                   Privacy Policy
                 </Link>
@@ -69,9 +66,9 @@ export default async function SignInPage() {
             </div>
           </div>
 
-          <aside className="reveal hidden lg:col-span-4 lg:col-start-9 lg:block">
-            <div className="rounded-xl border border-line bg-panel p-7">
-              <p className="eyebrow text-signal">{site.market.status}</p>
+          <aside className="hidden lg:col-span-4 lg:col-start-9 lg:block">
+            <div className="rounded-xl border border-line bg-slate-50/60 p-7">
+              <p className="eyebrow text-faint font-semibold">{site.market.status}</p>
               <dl className="mt-5 space-y-3.5">
                 {site.market.tape.slice(0, 5).map((row) => (
                   <div
@@ -80,9 +77,9 @@ export default async function SignInPage() {
                   >
                     <dt className="eyebrow text-faint">{row.label}</dt>
                     <dd className="tabular flex items-baseline gap-2.5 text-sm">
-                      <span className="text-paper">{row.value}</span>
+                      <span className="font-medium text-black">{row.value}</span>
                       <span
-                        className={`text-xs ${row.up ? "text-signal" : "text-drop"}`}
+                        className={`text-xs font-medium ${row.up ? "text-black" : "text-drop"}`}
                       >
                         {row.change}
                       </span>
@@ -100,3 +97,4 @@ export default async function SignInPage() {
     </div>
   );
 }
+

@@ -50,7 +50,24 @@ Environment variables are managed locally in `.env.local` and `.env` (synced via
      node --env-file=.env.local scripts/test-neon.mjs
      ```
 
+## Design & Theme Standards
+
+The application strictly adheres to a minimalist, high-contrast monochrome design system:
+
+- **Theme Palette**: Completely white background (`#ffffff` / `--color-ink: #ffffff`) with black text (`#000000`, `#09090b` / `--color-paper: #09090b`).
+- **No Green Colors**: Green colors (e.g. `#4ade9b`, neon green signals, green glows, phosphor effects) are strictly forbidden. Use crisp black, neutral slate, or zinc for accents and active states.
+- **Borders & Panels**: Crisp hairline borders (`#e2e8f0`) and clean white panels (`#ffffff`).
+- **Zero Demo Content**: Dashboard must only display grounded, real data (Neon PostgreSQL tables). No fake marketing claims, demo latency metrics, or synthetic tickers.
+
+## Routing & Navigation Standards
+
+- **Authentication Redirect**: Upon successful authentication, the user MUST be redirected directly to `/dashboard/overview` (not `/dashboard`).
+- **Dashboard Root**: Any navigation to `/dashboard` must immediately redirect to `/dashboard/overview`.
+- **Sidebar Structure**: The left-side panel MUST feature ONLY **Overview** (`/dashboard/overview`) and nothing else.
+- **Overview Workspace**: The overview page workspace must remain completely blank.
+
 ## Verification
+
 
 Do not run the production build (`pnpm build` / `npm run build`) as part of normal work. It is slow, and on a project this size it rarely tells us more than the two checks below.
 
@@ -62,3 +79,4 @@ Verify changes with:
 Run the production build only when the change is genuinely large or systemic: a framework or build configuration change, a dependency or upgrade, a routing or rendering-mode change that could alter what gets prerendered, or a release. If you are unsure whether a change qualifies, it does not — ask first.
 
 Say plainly which checks you ran and which you skipped, and anything that therefore went unverified.
+

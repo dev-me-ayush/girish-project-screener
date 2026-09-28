@@ -61,10 +61,11 @@ export async function signIn(
   }
 
   if (shouldRedirect) {
-    redirect("/dashboard");
+    redirect("/dashboard/overview");
   }
 
   return { error: null };
+
 }
 
 export async function signOut() {

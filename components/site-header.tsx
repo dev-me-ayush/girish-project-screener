@@ -38,7 +38,7 @@ export function SiteHeader() {
           href="/"
           className="flex items-center gap-2.5 text-paper transition-opacity hover:opacity-80"
         >
-          <Logo className="h-7 w-7 text-signal" />
+          <Logo className="h-7 w-7 text-black" />
           <Wordmark />
         </Link>
 
@@ -47,7 +47,7 @@ export function SiteHeader() {
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-md px-3 py-2 text-sm text-muted transition-colors hover:text-paper"
+              className="rounded-md px-3 py-2 text-sm text-muted transition-colors hover:text-black"
             >
               {item.label}
             </Link>
@@ -57,11 +57,12 @@ export function SiteHeader() {
         <div className="flex items-center gap-2">
           <Link
             href={site.signIn.href}
-            className="rounded-full bg-signal px-4 py-2 text-sm font-medium whitespace-nowrap text-ink transition-transform duration-200 hover:-translate-y-px active:translate-y-0"
+            className="rounded-full bg-black px-4 py-2 text-sm font-medium whitespace-nowrap text-white transition-transform duration-200 hover:-translate-y-px hover:bg-zinc-800 active:translate-y-0"
           >
             {site.signIn.label}
           </Link>
         </div>
+
 
         <button
           type="button"
@@ -114,10 +115,11 @@ export function SiteHeader() {
           <Link
             href={site.signIn.href}
             onClick={() => setOpen(false)}
-            className="mt-3 mb-2 rounded-full bg-signal px-4 py-2.5 text-center text-sm font-medium text-ink"
+            className="mt-3 mb-2 rounded-full bg-black px-4 py-2.5 text-center text-sm font-medium text-white"
           >
             {site.signIn.label}
           </Link>
+
         </nav>
       </div>
     </header>
