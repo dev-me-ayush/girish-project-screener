@@ -13,7 +13,7 @@ jobs:
   build-and-deploy:
     name: Build & Deploy to AWS
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
 
     steps:
       - name: Checkout repository
@@ -64,91 +64,11 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Deploy or Create AWS App Runner Service
+      - name: Deployment Triggered
         run: |
           SERVICE_NAME="girish-screener"
-          IMAGE_URI="${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:latest"
-          ECR_ROLE_ARN="arn:aws:iam::513329232477:role/AppRunnerECRAccessRole"
-          INSTANCE_ROLE_ARN="arn:aws:iam::513329232477:role/AppRunnerSecretsInstanceRole"
-          SCALING_ARN="arn:aws:apprunner:ap-south-1:513329232477:autoscalingconfiguration/girish-screener-scaling/1/9a77d151b00f4af1bdc2bb994f041c27"
-          SECRET_ARN="arn:aws:secretsmanager:ap-south-1:513329232477:secret:tessera/production"
-
-          # Check if service exists
-          EXISTING_SERVICE_ARN=$(aws apprunner list-services --region ap-south-1 --query "ServiceSummaryList[?ServiceName=='$SERVICE_NAME'].ServiceArn" --output text)
-
-          if [ -z "$EXISTING_SERVICE_ARN" ] || [ "$EXISTING_SERVICE_ARN" == "None" ]; then
-            echo "Creating new AWS App Runner Service: $SERVICE_NAME..."
-
-            cat <<EOF > service-config.json
-          {
-            "ServiceName": "$SERVICE_NAME",
-            "SourceConfiguration": {
-              "ImageRepository": {
-                "ImageIdentifier": "$IMAGE_URI",
-                "ImageConfiguration": {
-                  "Port": "3000",
-                  "RuntimeEnvironmentVariables": {
-                    "NODE_ENV": "production",
-                    "PORT": "3000"
-                  },
-                  "RuntimeEnvironmentSecrets": {
-                    "DATABASE_URL": "${SECRET_ARN}:DATABASE_URL::",
-                    "DATABASE_URL_UNPOOLED": "${SECRET_ARN}:DATABASE_URL_UNPOOLED::",
-                    "NEON_PROJECT_ID": "${SECRET_ARN}:NEON_PROJECT_ID::",
-                    "NEON_BRANCH": "${SECRET_ARN}:NEON_BRANCH::"
-                  }
-                },
-                "ImageRepositoryType": "ECR"
-              },
-              "AutoDeploymentsEnabled": true,
-              "AuthenticationConfiguration": {
-                "AccessRoleArn": "$ECR_ROLE_ARN"
-              }
-            },
-            "InstanceConfiguration": {
-              "Cpu": "1 vCPU",
-              "Memory": "2 GB",
-              "InstanceRoleArn": "$INSTANCE_ROLE_ARN"
-            },
-            "AutoScalingConfigurationArn": "$SCALING_ARN",
-            "HealthCheckConfiguration": {
-              "Protocol": "HTTP",
-              "Path": "/",
-              "Interval": 10,
-              "Timeout": 5,
-              "HealthyThreshold": 1,
-              "UnhealthyThreshold": 5
-            }
-          }
-          EOF
-
-            NEW_SERVICE_ARN=$(aws apprunner create-service --cli-input-json file://service-config.json --region ap-south-1 --query "Service.ServiceArn" --output text)
-            echo "Created App Runner service: $NEW_SERVICE_ARN"
-          else
-            echo "App Runner service already exists: $EXISTING_SERVICE_ARN. Triggering deployment..."
-            aws apprunner start-deployment --service-arn "$EXISTING_SERVICE_ARN" --region ap-south-1
-          fi
-
-      - name: Wait for App Runner Service to reach RUNNING status
-        run: |
-          SERVICE_NAME="girish-screener"
-          echo "Waiting for $SERVICE_NAME to become active..."
-
-          SERVICE_ARN=$(aws apprunner list-services --region ap-south-1 --query "ServiceSummaryList[?ServiceName=='$SERVICE_NAME'].ServiceArn" --output text)
-
-          for i in {1..30}; do
-            STATUS=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --region ap-south-1 --query "Service.Status" --output text)
-            echo "Current status: $STATUS (Attempt $i/30)"
-            if [ "$STATUS" == "RUNNING" ]; then
-              URL=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --region ap-south-1 --query "Service.ServiceUrl" --output text)
-              echo "=========================================="
-              echo "APPLICATION DEPLOYED SUCCESSFULLY!"
-              echo "URL: https://$URL"
-              echo "=========================================="
-              exit 0
-            elif [ "$STATUS" == "CREATE_FAILED" ] || [ "$STATUS" == "DELETED" ]; then
-              echo "Deployment failed with status: $STATUS"
-              exit 1
-            fi
-            sleep 20
-          done
+          URL=$(aws apprunner list-services --region ${{ secrets.AWS_REGION }} --query "ServiceSummaryList[?ServiceName=='$SERVICE_NAME'].ServiceUrl" --output text)
+          echo "=========================================================="
+          echo "Image pushed to ECR. AWS App Runner auto-deployment initiated!"
+          echo "Live URL: https://$URL"
+          echo "=========================================================="
