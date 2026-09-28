@@ -7,8 +7,9 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+COPY package.json pnpm-lock.yaml .npmrc* ./
+RUN pnpm config set strict-dep-builds false && pnpm install --frozen-lockfile
+
 
 FROM base AS builder
 WORKDIR /app
