@@ -549,40 +549,27 @@ export function LiveScanner() {
 
                     {/* PDH (Zero rupee symbol) */}
                     <td className="w-24 border-r border-zinc-800 px-3 py-1.5 text-right text-zinc-400 font-mono">
-                      {item.pdh.toFixed(1)}
+                      {item.pdh.toFixed(2)}
                     </td>
 
                     {/* PDL (Zero rupee symbol) */}
                     <td className="w-24 border-r border-zinc-800 px-3 py-1.5 text-right text-zinc-400 font-mono">
-                      {item.pdl.toFixed(1)}
+                      {item.pdl.toFixed(2)}
                     </td>
 
                     {/* Fib AC 38.2% (Zero rupee symbol) */}
                     <td className="w-24 border-r border-zinc-800 px-3 py-1.5 text-right text-zinc-300 font-mono">
-                      {item.ac38_2 > 0 ? item.ac38_2.toFixed(1) : "--"}
+                      {item.ac38_2 > 0 ? item.ac38_2.toFixed(2) : "--"}
                     </td>
 
                     {/* Fib DC 38.2% (Zero rupee symbol) */}
                     <td className="w-24 border-r border-zinc-800 px-3 py-1.5 text-right text-zinc-300 font-mono">
-                      {item.dc38_2 > 0 ? item.dc38_2.toFixed(1) : "--"}
+                      {item.dc38_2 > 0 ? item.dc38_2.toFixed(2) : "--"}
                     </td>
 
                     {/* Breakout Status */}
-                    <td className="min-w-40 border-r border-zinc-800 px-3 py-1.5">
-                      {b.hasBroken ? (
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                            b.direction === "BULLISH"
-                              ? "border border-zinc-700 bg-zinc-800 text-paper"
-                              : "border border-red-900/50 bg-red-950/40 text-red-300"
-                          }`}
-                        >
-                          <span>{b.direction === "BULLISH" ? "▲" : "▼"}</span>
-                          <span>{b.statusLabel}</span>
-                        </span>
-                      ) : (
-                        <span className="text-[11px] font-mono text-zinc-500">Inside Range</span>
-                      )}
+                    <td className="min-w-36 border-r border-zinc-800 px-3 py-1.5 font-mono text-[11px] text-paper">
+                      {b.statusLabel || "Inside Range"}
                     </td>
 
                     {/* Breakout Time */}

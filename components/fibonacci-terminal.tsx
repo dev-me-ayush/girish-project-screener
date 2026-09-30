@@ -517,36 +517,13 @@ export function FibonacciTerminal() {
                   </div>
                 </div>
 
-                <div
-                  className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-                    currentBreakout.hasBroken
-                      ? currentBreakout.direction === "BULLISH"
-                        ? "border-zinc-700 bg-zinc-900 shadow-xs"
-                        : "border-red-900/60 bg-red-950/30"
-                      : "border-zinc-800 bg-ink"
-                  }`}
-                >
+                <div className="p-4 rounded-xl border border-zinc-800 bg-ink flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <span
-                      className={`px-2.5 py-1 rounded-md text-xs font-bold ${
-                        currentBreakout.hasBroken
-                          ? currentBreakout.direction === "BULLISH"
-                            ? "bg-paper text-ink"
-                            : "bg-red-500 text-ink"
-                          : "border border-zinc-800 bg-zinc-900 text-zinc-400"
-                      }`}
-                    >
-                      {currentBreakout.hasBroken
-                        ? currentBreakout.direction === "BULLISH"
-                          ? "BULLISH BREAKOUT"
-                          : "BEARISH BREAKOUT"
-                        : "INSIDE FIB RANGE"}
+                    <span className="px-2.5 py-1 rounded-md text-xs font-bold border border-zinc-700 bg-zinc-900 text-paper">
+                      {currentBreakout.statusLabel}
                     </span>
 
                     <div>
-                      <div className="text-xs font-bold text-paper">
-                        {currentBreakout.statusLabel}
-                      </div>
                       <div className="text-[11px] text-zinc-400 mt-0.5">
                         {currentBreakout.hasBroken
                           ? `Triggered at ${currentBreakout.breakoutTime || "intraday"} on ${selectedTimeframe} timeframe`

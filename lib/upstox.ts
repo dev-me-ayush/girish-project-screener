@@ -152,6 +152,11 @@ export async function getHeaderIndicesQuotes(): Promise<IndexQuote[]> {
  */
 export async function getPreviousDayRange(instrumentKey: string): Promise<FibLevels> {
   try {
+    const now = new Date();
+    const istOffsetMs = 5.5 * 60 * 60 * 1000;
+    const istDate = new Date(now.getTime() + istOffsetMs);
+    const todayIST = istDate.toISOString().split("T")[0];
+
     const today = new Date().toISOString().split("T")[0];
     const fromDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     const url = `${UPSTOX_BASE_URL}/historical-candle/${encodeURIComponent(instrumentKey)}/day/${today}/${fromDate}`;
@@ -162,10 +167,11 @@ export async function getPreviousDayRange(instrumentKey: string): Promise<FibLev
     const json = await res.json();
     const candles = json.data?.candles || [];
 
-    // candles[0] is the most recent trading session (yesterday if market is running today or today)
-    // In Upstox daily: [timestamp, O, H, L, C, V, OI]
-    if (candles.length > 0) {
-      const prevBar = candles[0];
+    // Filter out today's in-progress candle if Upstox includes it, ensuring we strictly use the completed previous session
+    const completedCandles = candles.filter((c: [string, number, number, number, number, number, number]) => !c[0].startsWith(todayIST));
+    const prevBar = completedCandles.length > 0 ? completedCandles[0] : candles[0];
+
+    if (prevBar) {
       const pdh = Number(prevBar[2]);
       const pdl = Number(prevBar[3]);
       const pdc = Number(prevBar[4]);

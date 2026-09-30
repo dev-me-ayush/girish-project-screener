@@ -197,18 +197,15 @@ export function analyzeIntradayFibBreakout(
   // Reverse to evaluate chronological sequence from market open to close
   const chronological = [...candles].reverse();
 
-  const goldenRatio = levels.level61_8 || Number((levels.pdl + 0.618 * levels.range).toFixed(2));
-  const pdh = levels.pdh;
-  const support38_2 = levels.ac38_2;
-  const pdl = levels.pdl;
+  const ac38_2 = levels.ac38_2; // AC 38.2% Upper threshold
+  const dc38_2 = levels.dc38_2; // DC 38.2% Lower threshold
 
-  let firstBreakout: FibBreakoutEvaluation | null = null;
+  let activeBreakout: FibBreakoutEvaluation | null = null;
 
-  for (let i = 1; i < chronological.length; i++) {
-    const prev = chronological[i - 1];
+  for (let i = 0; i < chronological.length; i++) {
     const curr = chronological[i];
+    const prev = i > 0 ? chronological[i - 1] : null;
 
-    // Format candle timestamp for human readability
     const candleDate = new Date(curr.timestamp);
     const timeFormatted = candleDate.toLocaleTimeString("en-IN", {
       hour: "2-digit",
@@ -216,79 +213,78 @@ export function analyzeIntradayFibBreakout(
       hour12: true,
     });
 
-    // 1. PDH 100% Breakout
-    if (prev.close <= pdh && curr.close > pdh) {
-      firstBreakout = {
+    const prevClose = prev ? prev.close : curr.open;
+    const currClose = curr.close;
+
+    // Up Breakout: Price crosses above AC 38.2%
+    if (prevClose <= ac38_2 && currClose > ac38_2) {
+      activeBreakout = {
         hasBroken: true,
         direction: "BULLISH",
-        statusLabel: "PDH High Breakout",
-        levelName: "PDH (100.0%)",
-        levelPrice: pdh,
-        triggerPrice: curr.close,
+        statusLabel: "Up Breakout",
+        levelName: "AC 38.2%",
+        levelPrice: ac38_2,
+        triggerPrice: currClose,
         breakoutTime: timeFormatted,
         timeframe,
       };
-      break;
+      continue;
     }
 
-    // 2. 61.8% Golden Ratio Bullish Breakout
-    if (prev.close <= goldenRatio && curr.close > goldenRatio) {
-      firstBreakout = {
-        hasBroken: true,
-        direction: "BULLISH",
-        statusLabel: "Golden Ratio 61.8% Breakout",
-        levelName: "Fib 61.8% (Golden Ratio)",
-        levelPrice: goldenRatio,
-        triggerPrice: curr.close,
-        breakoutTime: timeFormatted,
-        timeframe,
-      };
-      break;
-    }
-
-    // 3. PDL 0% Breakdown
-    if (prev.close >= pdl && curr.close < pdl) {
-      firstBreakout = {
+    // Low Breakout: Price crosses below DC 38.2%
+    if (prevClose >= dc38_2 && currClose < dc38_2) {
+      activeBreakout = {
         hasBroken: true,
         direction: "BEARISH",
-        statusLabel: "PDL Low Breakdown",
-        levelName: "PDL (0.0%)",
-        levelPrice: pdl,
-        triggerPrice: curr.close,
+        statusLabel: "Low Breakout",
+        levelName: "DC 38.2%",
+        levelPrice: dc38_2,
+        triggerPrice: currClose,
         breakoutTime: timeFormatted,
         timeframe,
       };
-      break;
+      continue;
     }
-
-    // 4. 38.2% Support Breakdown
-    if (prev.close >= support38_2 && curr.close < support38_2) {
-      firstBreakout = {
-        hasBroken: true,
-        direction: "BEARISH",
-        statusLabel: "Fib 38.2% Support Breakdown",
-        levelName: "Fib 38.2% (Support)",
-        levelPrice: support38_2,
-        triggerPrice: curr.close,
-        breakoutTime: timeFormatted,
-        timeframe,
-      };
-      break;
-    }
-  }
-
-  if (firstBreakout) {
-    return firstBreakout;
   }
 
   const latest = candles[0];
+  const ltp = latest ? latest.close : 0;
+
+  // If currently holding above AC 38.2%, confirmed Up Breakout
+  if (ltp > ac38_2 && ac38_2 > 0) {
+    return {
+      hasBroken: true,
+      direction: "BULLISH",
+      statusLabel: "Up Breakout",
+      levelName: "AC 38.2%",
+      levelPrice: ac38_2,
+      triggerPrice: activeBreakout?.triggerPrice || ltp,
+      breakoutTime: activeBreakout?.breakoutTime || null,
+      timeframe,
+    };
+  }
+
+  // If currently holding below DC 38.2%, confirmed Low Breakout
+  if (ltp < dc38_2 && dc38_2 > 0) {
+    return {
+      hasBroken: true,
+      direction: "BEARISH",
+      statusLabel: "Low Breakout",
+      levelName: "DC 38.2%",
+      levelPrice: dc38_2,
+      triggerPrice: activeBreakout?.triggerPrice || ltp,
+      breakoutTime: activeBreakout?.breakoutTime || null,
+      timeframe,
+    };
+  }
+
   return {
     hasBroken: false,
     direction: "NONE",
     statusLabel: "Inside Range",
     levelName: null,
     levelPrice: null,
-    triggerPrice: latest ? latest.close : 0,
+    triggerPrice: ltp,
     breakoutTime: null,
     timeframe,
   };
