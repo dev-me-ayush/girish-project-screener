@@ -208,6 +208,7 @@ export function analyzeIntradayFibBreakout(
 
     const candleDate = new Date(curr.timestamp);
     const timeFormatted = candleDate.toLocaleTimeString("en-IN", {
+      timeZone: "Asia/Kolkata",
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
@@ -216,39 +217,51 @@ export function analyzeIntradayFibBreakout(
     const prevClose = prev ? prev.close : curr.open;
     const currClose = curr.close;
 
-    // Up Breakout: Price crosses above AC 38.2%
-    if (prevClose <= ac38_2 && currClose > ac38_2) {
-      activeBreakout = {
-        hasBroken: true,
-        direction: "BULLISH",
-        statusLabel: "Up Breakout",
-        levelName: "AC 38.2%",
-        levelPrice: ac38_2,
-        triggerPrice: currClose,
-        breakoutTime: timeFormatted,
-        timeframe,
-      };
+    // Up Breakout: Price crosses above AC 38.2% or initial candle is above AC 38.2%
+    if ((prevClose <= ac38_2 && currClose > ac38_2) || (!activeBreakout && currClose > ac38_2)) {
+      if (!activeBreakout) {
+        activeBreakout = {
+          hasBroken: true,
+          direction: "BULLISH",
+          statusLabel: "Up Breakout",
+          levelName: "AC 38.2%",
+          levelPrice: ac38_2,
+          triggerPrice: currClose,
+          breakoutTime: timeFormatted,
+          timeframe,
+        };
+      }
       continue;
     }
 
-    // Low Breakout: Price crosses below DC 38.2%
-    if (prevClose >= dc38_2 && currClose < dc38_2) {
-      activeBreakout = {
-        hasBroken: true,
-        direction: "BEARISH",
-        statusLabel: "Low Breakout",
-        levelName: "DC 38.2%",
-        levelPrice: dc38_2,
-        triggerPrice: currClose,
-        breakoutTime: timeFormatted,
-        timeframe,
-      };
+    // Low Breakout: Price crosses below DC 38.2% or initial candle is below DC 38.2%
+    if ((prevClose >= dc38_2 && currClose < dc38_2) || (!activeBreakout && currClose < dc38_2)) {
+      if (!activeBreakout) {
+        activeBreakout = {
+          hasBroken: true,
+          direction: "BEARISH",
+          statusLabel: "Low Breakout",
+          levelName: "DC 38.2%",
+          levelPrice: dc38_2,
+          triggerPrice: currClose,
+          breakoutTime: timeFormatted,
+          timeframe,
+        };
+      }
       continue;
     }
   }
 
   const latest = candles[0];
   const ltp = latest ? latest.close : 0;
+  const latestFormattedTime = latest
+    ? new Date(latest.timestamp).toLocaleTimeString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      })
+    : null;
 
   // If currently holding above AC 38.2%, confirmed Up Breakout
   if (ltp > ac38_2 && ac38_2 > 0) {
@@ -259,7 +272,7 @@ export function analyzeIntradayFibBreakout(
       levelName: "AC 38.2%",
       levelPrice: ac38_2,
       triggerPrice: activeBreakout?.triggerPrice || ltp,
-      breakoutTime: activeBreakout?.breakoutTime || null,
+      breakoutTime: activeBreakout?.breakoutTime || latestFormattedTime,
       timeframe,
     };
   }
@@ -273,7 +286,7 @@ export function analyzeIntradayFibBreakout(
       levelName: "DC 38.2%",
       levelPrice: dc38_2,
       triggerPrice: activeBreakout?.triggerPrice || ltp,
-      breakoutTime: activeBreakout?.breakoutTime || null,
+      breakoutTime: activeBreakout?.breakoutTime || latestFormattedTime,
       timeframe,
     };
   }

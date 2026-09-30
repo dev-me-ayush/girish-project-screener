@@ -110,6 +110,7 @@ export async function getHeaderIndicesQuotes(): Promise<IndexQuote[]> {
       if (refDate.getDay() === 0) refDate.setDate(refDate.getDate() - 2);
       else if (refDate.getDay() === 6) refDate.setDate(refDate.getDate() - 1);
       const referenceDate = refDate.toLocaleDateString("en-IN", {
+        timeZone: "Asia/Kolkata",
         day: "numeric",
         month: "short",
         year: "numeric",

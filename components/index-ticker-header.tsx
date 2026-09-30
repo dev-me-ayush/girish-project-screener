@@ -19,6 +19,7 @@ export function IndexTickerHeader() {
         if (!isCancelled && data.status === "success" && Array.isArray(data.indices)) {
           setIndices(data.indices);
           const timeStr = new Date(data.updatedAt || Date.now()).toLocaleTimeString("en-IN", {
+            timeZone: "Asia/Kolkata",
             hour: "2-digit",
             minute: "2-digit",
             second: "2-digit",

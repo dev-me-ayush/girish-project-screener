@@ -20,6 +20,7 @@ function getFallbackReferenceDate(): string {
   if (d.getDay() === 0) d.setDate(d.getDate() - 2);
   else if (d.getDay() === 6) d.setDate(d.getDate() - 1);
   return d.toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -119,6 +120,7 @@ export function OverviewTerminal({
 
   const formattedTime = isMounted
     ? lastUpdated.toLocaleTimeString("en-IN", {
+        timeZone: "Asia/Kolkata",
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",

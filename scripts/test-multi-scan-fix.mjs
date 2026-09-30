@@ -1,5 +1,7 @@
 import { neon } from "@neondatabase/serverless";
 
+process.env.TZ = "UTC"; // Simulate AWS App Runner UTC runtime
+
 const databaseUrl = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
 if (!databaseUrl) {
   console.error("Missing DATABASE_URL");
@@ -41,6 +43,7 @@ function analyzeIntradayFibBreakout(levels, candles, timeframe) {
     const prev = i > 0 ? chronological[i - 1] : null;
     const candleDate = new Date(curr.timestamp);
     const timeFormatted = candleDate.toLocaleTimeString("en-IN", {
+      timeZone: "Asia/Kolkata",
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
@@ -48,37 +51,49 @@ function analyzeIntradayFibBreakout(levels, candles, timeframe) {
     const prevClose = prev ? prev.close : curr.open;
     const currClose = curr.close;
 
-    if (prevClose <= ac38_2 && currClose > ac38_2) {
-      activeBreakout = {
-        hasBroken: true,
-        direction: "BULLISH",
-        statusLabel: "Up Breakout",
-        levelName: "AC 38.2%",
-        levelPrice: ac38_2,
-        triggerPrice: currClose,
-        breakoutTime: timeFormatted,
-        timeframe,
-      };
+    if ((prevClose <= ac38_2 && currClose > ac38_2) || (!activeBreakout && currClose > ac38_2)) {
+      if (!activeBreakout) {
+        activeBreakout = {
+          hasBroken: true,
+          direction: "BULLISH",
+          statusLabel: "Up Breakout",
+          levelName: "AC 38.2%",
+          levelPrice: ac38_2,
+          triggerPrice: currClose,
+          breakoutTime: timeFormatted,
+          timeframe,
+        };
+      }
       continue;
     }
 
-    if (prevClose >= dc38_2 && currClose < dc38_2) {
-      activeBreakout = {
-        hasBroken: true,
-        direction: "BEARISH",
-        statusLabel: "Low Breakout",
-        levelName: "DC 38.2%",
-        levelPrice: dc38_2,
-        triggerPrice: currClose,
-        breakoutTime: timeFormatted,
-        timeframe,
-      };
+    if ((prevClose >= dc38_2 && currClose < dc38_2) || (!activeBreakout && currClose < dc38_2)) {
+      if (!activeBreakout) {
+        activeBreakout = {
+          hasBroken: true,
+          direction: "BEARISH",
+          statusLabel: "Low Breakout",
+          levelName: "DC 38.2%",
+          levelPrice: dc38_2,
+          triggerPrice: currClose,
+          breakoutTime: timeFormatted,
+          timeframe,
+        };
+      }
       continue;
     }
   }
 
   const latest = candles[0];
   const ltp = latest ? latest.close : 0;
+  const latestFormattedTime = latest
+    ? new Date(latest.timestamp).toLocaleTimeString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      })
+    : null;
 
   if (ltp > ac38_2 && ac38_2 > 0) {
     return {
@@ -88,7 +103,7 @@ function analyzeIntradayFibBreakout(levels, candles, timeframe) {
       levelName: "AC 38.2%",
       levelPrice: ac38_2,
       triggerPrice: activeBreakout?.triggerPrice || ltp,
-      breakoutTime: activeBreakout?.breakoutTime || null,
+      breakoutTime: activeBreakout?.breakoutTime || latestFormattedTime,
       timeframe,
     };
   }
@@ -101,10 +116,11 @@ function analyzeIntradayFibBreakout(levels, candles, timeframe) {
       levelName: "DC 38.2%",
       levelPrice: dc38_2,
       triggerPrice: activeBreakout?.triggerPrice || ltp,
-      breakoutTime: activeBreakout?.breakoutTime || null,
+      breakoutTime: activeBreakout?.breakoutTime || latestFormattedTime,
       timeframe,
     };
   }
+
 
   return {
     hasBroken: false,

@@ -90,6 +90,10 @@ An institutional, continuous edge-to-edge multi-watchlist screener tracking Prev
   - Every column header (`#`, `Symbol`, `TF`, `LTP`, `Day Chg`, `OI`, `Volume`, `PDH`, `PDL`, `AC 38.2%`, `DC 38.2%`, `Breakout Status`, `Time`) is equipped with an educational info tooltip.
 - **Zero Currency Symbols**:
   - Prices (LTP, PDH, PDL, AC 38.2%, DC 38.2%) rendered strictly as clean formatted numbers with zero `₹` symbols anywhere.
+- **Strict Indian Standard Time (IST / Asia/Kolkata)**:
+  - All candle timestamps, breakout trigger times (`breakoutTime`), scan telemetry timestamps (`lastScannedAt`), and ticker sync times explicitly specify `{ timeZone: "Asia/Kolkata" }`.
+  - Permanently eliminates UTC skew (e.g. 10:30 AM IST displaying as 05:00 AM on cloud container runtimes).
+  - Handles gap-up and gap-down openings, accurately capturing the initial market open breakout time (`09:15 am`).
 - **Spreadsheet Table Layout**:
   - Sticky `#` and `Symbol` columns for seamless horizontal panning.
   - Clean monochrome breakout status indicators (`Up Breakout`, `Low Breakout`, `Inside Range`) rendered strictly in normal white color without decorative badge clutters.

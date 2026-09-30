@@ -56,6 +56,7 @@ export function LiveScanner() {
                   setScreenerResults(scan.results || []);
                   setLastScannedAt(
                     new Date(scan.scannedAt).toLocaleTimeString("en-IN", {
+                      timeZone: "Asia/Kolkata",
                       hour: "2-digit",
                       minute: "2-digit",
                       second: "2-digit",
@@ -110,6 +111,7 @@ export function LiveScanner() {
           setScreenerResults(scan.results || []);
           setLastScannedAt(
             new Date(scan.scannedAt).toLocaleTimeString("en-IN", {
+              timeZone: "Asia/Kolkata",
               hour: "2-digit",
               minute: "2-digit",
               second: "2-digit",
