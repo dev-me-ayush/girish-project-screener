@@ -92,5 +92,54 @@ An institutional, continuous edge-to-edge multi-watchlist screener tracking Prev
   - Prices (LTP, PDH, PDL, AC 38.2%, DC 38.2%) rendered strictly as clean formatted numbers with zero `₹` symbols anywhere.
 - **Spreadsheet Table Layout**:
   - Sticky `#` and `Symbol` columns for seamless horizontal panning.
-  - High-contrast breakout state chips (`▲ BULLISH BREAKOUT` / `▼ BEARISH BREAKDOWN` / `Inside Range`).
+  - Clean monochrome breakout status indicators (`Up Breakout`, `Low Breakout`, `Inside Range`) rendered strictly in normal white color without decorative badge clutters.
+  - Instant real-time symbol search filter in the toolbar for searching strikes, CE/PE, or tickers.
   - Telemetry footer pinned to viewport bottom showing active watchlist count and total screened instruments.
+
+---
+
+## 4. Auto-Syncing Default Options Watchlist (ATM ±7)
+
+A fully automated, zero-maintenance default options watchlist designed specifically for high-liquidity index options trading.
+
+### Core Architecture
+- **Curated High-Liquidity Universe (~52 Contracts)**:
+  - **NIFTY 50** (`NSE_INDEX|Nifty 50`): Nearest active weekly expiry with ATM ± 7 strikes (15 strikes: 15 CE + 15 PE = 30 contracts).
+  - **BANK NIFTY** (`NSE_INDEX|Nifty Bank`): Nearest active weekly expiry with ATM ± 5 strikes (11 strikes: 11 CE + 11 PE = 22 contracts).
+  - Concentrates strictly where 95%+ of Indian market derivatives volume and liquidity reside.
+- **Dynamic Daily Synchronization**:
+  - Automatically identifies current spot price and current ATM strike.
+  - Detects the nearest valid weekly expiry ($\ge$ today in IST).
+  - Auto-syncs into Neon PostgreSQL under `DEFAULT OPTIONS (ATM ±7)`.
+  - Automatically clears old or expired strikes on weekly rollover—the user never needs to manually add strikes or delete expired contracts.
+  - Integrated into `GET /api/watchlists`, scanner execution, and daily maintenance cron (`/api/cron/maintenance`).
+- **Strict 38.2% Fibonacci Breakout Logic**:
+  - Evaluates option premium Previous Day High (`PDH`) and Low (`PDL`).
+  - Calculates `AC 38.2%` ($\text{PDH} - 0.382 \times \text{Range}$) and `DC 38.2%` ($\text{PDL} + 0.382 \times \text{Range}$).
+  - Displays strictly:
+    - **`Up Breakout`**: Option premium trades above AC 38.2%.
+    - **`Low Breakout`**: Option premium decays below DC 38.2%.
+    - **`Inside Range`**: Option premium trades within the 38.2% corridor.
+  - Rendered in clean normal white color (`text-paper` / `#ffffff`) in monospace typography without extra badges or colored highlights.
+- **Instant Symbol Search**:
+  - Real-time client-side filter input in the scanner toolbar allowing traders to filter contracts by strike price (`22750`, `54700`), contract type (`CE`, `PE`), or underlying (`NIFTY`, `BANKNIFTY`).
+
+---
+
+## 5. Fibonacci Levels Terminal (`/dashboard/fibonacci`)
+
+A fast, focused terminal for inspecting exact Previous Day High/Low ranges, AC/DC 38.2% Fibonacci structural pivots, and intraday breakout status for any NSE stock or option contract.
+
+### Core Features
+- **Unified Fast Search (Equities + Options)**:
+  - Backed by `/api/instruments/equities` with PostgreSQL query merging `stocks` (2,680+ listed equities) and active `watchlist_items` (index option contracts).
+  - Instant pre-population: When the search modal opens with an empty query, top benchmark equities (`20MICRONS`, `RELIANCE`, `TCS`, `HDFCBANK`) and active ATM option strikes are instantly displayed without waiting for typing.
+  - Returns both `stocks` and `equities` payload keys to maintain total backward and forward compatibility.
+- **Auto-Loading Default Symbol (`20MICRONS`)**:
+  - Upon visiting `/dashboard/fibonacci`, the terminal immediately hydrates `20MICRONS` with live Upstox daily candles and intraday execution data, ensuring the page is ready with live Fibonacci calculations instead of an empty initial state.
+- **Strict Essential Data Focus (Zero Bloat)**:
+  - **Panel 1: Execution Metrics**: LTP, Day Change, Open Interest (OI), Session Volume, and Today's High/Low Range.
+  - **Panel 2: Previous Day Reference Range**: Previous Day High (PDH), Previous Day Low (PDL), Daily Range Span, and Previous Day Close (PDC).
+  - **Panel 3: Fibonacci 38.2% Levels**: AC 38.2% ($\text{PDH} - 0.382 \times \text{Range}$) and DC 38.2% ($\text{PDL} + 0.382 \times \text{Range}$).
+  - **Panel 4: Live Intraday Breakout**: Evaluates whether today's price has broken above AC 38.2% (`Up Breakout`), dropped below DC 38.2% (`Low Breakout`), or remained within (`Inside Range`). Rendered in normal white text (`#ffffff`) without unwanted extra text or decorative clutter.
+

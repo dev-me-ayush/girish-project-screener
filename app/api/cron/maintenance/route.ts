@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { syncDefaultOptionsWatchlist } from "@/lib/options-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -7,7 +8,7 @@ export async function GET() {
   try {
     const todayStr = new Date().toISOString().split("T")[0];
 
-    // Find and update all expired option items
+    // 1. Find and update all expired option items
     const updated = await sql`
       UPDATE watchlist_items
       SET is_expired = TRUE
@@ -15,11 +16,15 @@ export async function GET() {
       RETURNING id, symbol, expiry_date;
     `;
 
+    // 2. Refresh Default Options Watchlist with new active nearest expiry
+    const optionsSync = await syncDefaultOptionsWatchlist();
+
     return NextResponse.json({
       status: "success",
       message: "Daily maintenance completed",
       expiredCount: updated.length,
       expiredItems: updated,
+      optionsSync,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Maintenance failed";

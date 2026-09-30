@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { cookies } from "next/headers";
+import { ensureDefaultOptionsWatchlistSynced, DEFAULT_OPTIONS_WATCHLIST_NAME } from "@/lib/options-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,9 @@ export async function GET() {
   try {
     const cookieStore = await cookies();
     const sessionEmail = cookieStore.get("session_user")?.value || "girishsir@my.app.com";
+
+    // Ensure the default options watchlist is synced for today's active session
+    await ensureDefaultOptionsWatchlistSynced(sessionEmail);
 
     const watchlists = await sql`
       SELECT 
@@ -25,7 +29,9 @@ export async function GET() {
       LEFT JOIN watchlist_items i ON w.id = i.watchlist_id
       WHERE w.user_email = ${sessionEmail} OR w.user_email = 'girishsir@my.app.com'
       GROUP BY w.id
-      ORDER BY w.created_at ASC;
+      ORDER BY 
+        CASE WHEN w.name = ${DEFAULT_OPTIONS_WATCHLIST_NAME} THEN 0 ELSE 1 END,
+        w.created_at ASC;
     `;
 
     return NextResponse.json({ status: "success", watchlists });
@@ -46,11 +52,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: "error", message: "Watchlist name is required" }, { status: 400 });
     }
 
-    // Enforce max 10 watchlists constraint
+    // Enforce max 10 watchlists constraint (excluding the system default options watchlist)
     const countResult = await sql`
       SELECT COUNT(*)::int AS count 
       FROM watchlists 
-      WHERE user_email = ${sessionEmail} OR user_email = 'girishsir@my.app.com';
+      WHERE (user_email = ${sessionEmail} OR user_email = 'girishsir@my.app.com')
+        AND name != ${DEFAULT_OPTIONS_WATCHLIST_NAME};
     `;
     const currentCount = countResult[0]?.count || 0;
     if (currentCount >= 10) {

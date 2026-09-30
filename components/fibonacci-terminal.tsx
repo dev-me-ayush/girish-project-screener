@@ -22,11 +22,18 @@ interface EquitySearchResult {
 const TIMEFRAME_OPTIONS = ["1m", "2m", "3m", "5m", "15m"] as const;
 type TimeframeOption = (typeof TIMEFRAME_OPTIONS)[number];
 
+const DEFAULT_STOCK: EquitySearchResult = {
+  symbol: "20MICRONS",
+  name: "20 MICRONS LTD",
+  instrument_key: "NSE_EQ|INE144J01027",
+  sector: "Equity",
+};
+
 export function FibonacciTerminal() {
-  const [selectedStock, setSelectedStock] = useState<EquitySearchResult | null>(null);
+  const [selectedStock, setSelectedStock] = useState<EquitySearchResult | null>(DEFAULT_STOCK);
   const [selectedTimeframe, setSelectedTimeframe] = useState<TimeframeOption>("1m");
   const [symbolAnalysis, setSymbolAnalysis] = useState<SymbolFibAnalysis | null>(null);
-  const [isLoadingSymbol, setIsLoadingSymbol] = useState(false);
+  const [isLoadingSymbol, setIsLoadingSymbol] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Timeframe Popover
@@ -81,11 +88,32 @@ export function FibonacciTerminal() {
     setSelectedStock(stock);
     setIsSearchModalOpen(false);
     setModalSearchQuery("");
-    setSearchResults([]);
     fetchAnalysis(stock);
   }, [fetchAnalysis]);
 
-  // Debounced search for stocks in Neon DB
+  // Load default symbols for immediate display in modal
+  const loadDefaultSymbols = useCallback(async () => {
+    setIsSearchingDb(true);
+    try {
+      const res = await fetch("/api/instruments/equities", { cache: "no-store" });
+      const data = await res.json();
+      if (data.status === "success") {
+        setSearchResults(data.stocks || data.equities || []);
+      }
+    } catch (err) {
+      console.error("Failed to load default symbols:", err);
+    } finally {
+      setIsSearchingDb(false);
+    }
+  }, []);
+
+  const handleOpenSearchModal = useCallback(() => {
+    setIsSearchModalOpen(true);
+    setModalSearchQuery("");
+    loadDefaultSymbols();
+  }, [loadDefaultSymbols]);
+
+  // Debounced search for stocks and options in Neon DB
   useEffect(() => {
     const q = modalSearchQuery.trim();
     if (!q) return;
@@ -99,7 +127,7 @@ export function FibonacciTerminal() {
         });
         const data = await res.json();
         if (!isCancelled && data.status === "success") {
-          setSearchResults(data.stocks || []);
+          setSearchResults(data.stocks || data.equities || []);
         }
       } catch (err) {
         console.error("Equity search error:", err);
@@ -113,6 +141,31 @@ export function FibonacciTerminal() {
       clearTimeout(timer);
     };
   }, [modalSearchQuery]);
+
+  // Fetch analysis for default stock on initial mount
+  useEffect(() => {
+    let isCancelled = false;
+    async function loadInitial() {
+      try {
+        const url = `/api/scanner/symbol?symbol=${encodeURIComponent(DEFAULT_STOCK.symbol)}&instrumentKey=${encodeURIComponent(
+          DEFAULT_STOCK.instrument_key
+        )}`;
+        const res = await fetch(url, { cache: "no-store" });
+        const data = await res.json();
+        if (!isCancelled && data.status === "success" && data.analysis) {
+          setSymbolAnalysis(data.analysis);
+        }
+      } catch (err) {
+        console.error("Initial analysis load error:", err);
+      } finally {
+        if (!isCancelled) setIsLoadingSymbol(false);
+      }
+    }
+    loadInitial();
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   // Current breakout evaluation for the selected timeframe
   const currentBreakout = symbolAnalysis
@@ -128,11 +181,7 @@ export function FibonacciTerminal() {
           {/* Search Symbol Button */}
           <button
             type="button"
-            onClick={() => {
-              setIsSearchModalOpen(true);
-              setModalSearchQuery("");
-              setSearchResults([]);
-            }}
+            onClick={handleOpenSearchModal}
             className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-line bg-paper px-3 text-xs font-mono font-bold text-ink hover:bg-zinc-200 transition-all shrink-0 shadow-xs"
           >
             <SearchIcon className="h-3.5 w-3.5" />
@@ -266,11 +315,7 @@ export function FibonacciTerminal() {
             </p>
             <button
               type="button"
-              onClick={() => {
-                setIsSearchModalOpen(true);
-                setModalSearchQuery("");
-                setSearchResults([]);
-              }}
+              onClick={handleOpenSearchModal}
               className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line bg-paper px-3.5 text-xs font-mono font-bold text-ink hover:bg-zinc-200 transition-all shadow-xs"
             >
               <SearchIcon className="h-3.5 w-3.5" />
@@ -580,7 +625,7 @@ export function FibonacciTerminal() {
               <div className="flex items-center gap-2">
                 <SearchIcon className="h-4 w-4 text-paper" />
                 <h3 className="text-xs font-bold uppercase tracking-wider text-paper font-sans">
-                  Search NSE Symbol
+                  Search NSE Stock or Option
                 </h3>
               </div>
               <button
@@ -605,10 +650,10 @@ export function FibonacciTerminal() {
                     const val = e.target.value;
                     setModalSearchQuery(val);
                     if (!val.trim()) {
-                      setSearchResults([]);
+                      loadDefaultSymbols();
                     }
                   }}
-                  placeholder="Type symbol or name (e.g. RELIANCE, TCS)..."
+                  placeholder="Search symbol, strike, or option (e.g. 20MICRONS, RELIANCE, NIFTY)..."
                   autoFocus
                   className="h-9 w-full rounded-lg border border-zinc-700 bg-zinc-950 pl-9 pr-8 text-xs font-mono text-paper placeholder-zinc-500 focus:outline-none focus:border-paper"
                 />
@@ -617,7 +662,7 @@ export function FibonacciTerminal() {
                     type="button"
                     onClick={() => {
                       setModalSearchQuery("");
-                      setSearchResults([]);
+                      loadDefaultSymbols();
                     }}
                     className="absolute right-2.5 text-zinc-500 hover:text-paper"
                   >
@@ -634,13 +679,9 @@ export function FibonacciTerminal() {
                   <RefreshIcon className="h-4 w-4 animate-spin text-zinc-400" />
                   <span>Searching database...</span>
                 </div>
-              ) : modalSearchQuery.trim() === "" ? (
-                <div className="flex flex-col items-center justify-center h-full text-center p-8 text-xs font-mono text-zinc-500">
-                  <span>Type a symbol or company name to search across 2,680+ NSE equities.</span>
-                </div>
               ) : searchResults.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center p-8 text-xs font-mono text-zinc-500">
-                  <span>No matching equities found for &quot;{modalSearchQuery}&quot;.</span>
+                  <span>{modalSearchQuery.trim() ? `No matching symbols found for "${modalSearchQuery}".` : "No symbols available."}</span>
                 </div>
               ) : (
                 searchResults.map((stk) => (
@@ -659,7 +700,7 @@ export function FibonacciTerminal() {
                       </div>
                     </div>
                     {stk.sector && (
-                      <span className="text-[9px] text-zinc-500 border border-zinc-800 bg-zinc-950 px-2 py-0.5 rounded shrink-0">
+                      <span className="text-[9px] text-zinc-400 border border-zinc-800 bg-zinc-950 px-2 py-0.5 rounded shrink-0">
                         {stk.sector}
                       </span>
                     )}

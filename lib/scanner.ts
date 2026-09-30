@@ -8,6 +8,8 @@ import {
   evaluateCrossover,
   analyzeIntradayFibBreakout,
   aggregateCandles,
+  calculateFibLevels,
+  Candle,
   FibLevels,
   CrossoverEvaluation,
   FibBreakoutEvaluation,
@@ -185,6 +187,31 @@ export async function runWatchlistScan(
   const allKeys = items.map((i) => i.instrument_key);
   const liveQuotes = await getQuotesAndOI(allKeys);
 
+  // Pre-fetch levels and intraday candles for unique active keys in paced batches
+  const activeKeys = Array.from(new Set(activeItems.map((i) => i.instrument_key)));
+  const keyDataMap = new Map<string, { levels: FibLevels; candles1m: Candle[] }>();
+  const CHUNK_SIZE = 3;
+  for (let i = 0; i < activeKeys.length; i += CHUNK_SIZE) {
+    const chunk = activeKeys.slice(i, i + CHUNK_SIZE);
+    const chunkResults = await Promise.all(
+      chunk.map(async (key) => {
+        const [levels, candles1m] = await Promise.all([
+          getPreviousDayRange(key),
+          getIntradayCandles(key, "1m"),
+        ]);
+        return { key, levels, candles1m };
+      })
+    );
+    for (const res of chunkResults) {
+      keyDataMap.set(res.key, res);
+      keyDataMap.set(res.key.replace(":", "|"), res);
+      keyDataMap.set(res.key.replace("|", ":"), res);
+    }
+    if (i + CHUNK_SIZE < activeKeys.length) {
+      await new Promise((resolve) => setTimeout(resolve, 60));
+    }
+  }
+
   const scannedResults: ScannedSymbolResult[] = [];
   let crossoversDetectedCount = 0;
 
@@ -237,13 +264,16 @@ export async function runWatchlistScan(
       continue;
     }
 
-    // For active symbols: Fetch previous day range and 1m intraday candles, then resample if needed
+    // For active symbols: retrieve pre-fetched daily range & 1m intraday candles, then resample if needed
     const targetMinutes = mappedTf === "15m" ? 15 : mappedTf === "5m" ? 5 : mappedTf === "3m" ? 3 : mappedTf === "2m" ? 2 : 1;
-    const [fibLevels, candles1m] = await Promise.all([
-      getPreviousDayRange(item.instrument_key),
-      getIntradayCandles(item.instrument_key, "1m"),
-    ]);
-    const intradayCandles = aggregateCandles(candles1m, targetMinutes);
+    const keyData = keyDataMap.get(item.instrument_key) ||
+      keyDataMap.get(item.instrument_key.replace(":", "|")) ||
+      keyDataMap.get(item.instrument_key.replace("|", ":")) || {
+        levels: calculateFibLevels(0, 0, 0),
+        candles1m: [],
+      };
+    const fibLevels = keyData.levels;
+    const intradayCandles = aggregateCandles(keyData.candles1m, targetMinutes);
 
     const crossover = evaluateCrossover(fibLevels, intradayCandles);
 
@@ -439,6 +469,30 @@ export async function runMultiWatchlistScan(
   const allKeys = Array.from(new Set(items.map((i) => i.instrument_key)));
   const liveQuotes = await getQuotesAndOI(allKeys);
 
+  // Pre-fetch levels and intraday candles for unique keys in paced batches to respect Upstox rate limits
+  const keyDataMap = new Map<string, { levels: FibLevels; candles1m: Candle[] }>();
+  const CHUNK_SIZE = 3;
+  for (let i = 0; i < allKeys.length; i += CHUNK_SIZE) {
+    const chunk = allKeys.slice(i, i + CHUNK_SIZE);
+    const chunkResults = await Promise.all(
+      chunk.map(async (key) => {
+        const [levels, candles1m] = await Promise.all([
+          getPreviousDayRange(key),
+          getIntradayCandles(key, "1m"),
+        ]);
+        return { key, levels, candles1m };
+      })
+    );
+    for (const res of chunkResults) {
+      keyDataMap.set(res.key, res);
+      keyDataMap.set(res.key.replace(":", "|"), res);
+      keyDataMap.set(res.key.replace("|", ":"), res);
+    }
+    if (i + CHUNK_SIZE < allKeys.length) {
+      await new Promise((resolve) => setTimeout(resolve, 60));
+    }
+  }
+
   const results: MultiWatchlistSymbolResult[] = [];
 
   for (const item of items) {
@@ -459,11 +513,14 @@ export async function runMultiWatchlistScan(
 
     const tf = (item.timeframe || "1m") as "1m" | "2m" | "3m" | "5m" | "15m";
     const minutes = tf === "15m" ? 15 : tf === "5m" ? 5 : tf === "3m" ? 3 : tf === "2m" ? 2 : 1;
-    const [levels, candles1m] = await Promise.all([
-      getPreviousDayRange(item.instrument_key),
-      getIntradayCandles(item.instrument_key, "1m"),
-    ]);
-    const candles = aggregateCandles(candles1m, minutes);
+    const keyData = keyDataMap.get(item.instrument_key) ||
+      keyDataMap.get(item.instrument_key.replace(":", "|")) ||
+      keyDataMap.get(item.instrument_key.replace("|", ":")) || {
+        levels: calculateFibLevels(0, 0, 0),
+        candles1m: [],
+      };
+    const levels = keyData.levels;
+    const candles = aggregateCandles(keyData.candles1m, minutes);
 
     const breakout = analyzeIntradayFibBreakout(levels, candles, tf);
 
@@ -573,10 +630,35 @@ export async function getSymbolFibonacciAnalysis(
     }
   }
 
+  // Check watchlist_items if contract is an option or derivative
+  if (!stockMeta && instrumentKey) {
+    const rows = await sql`
+      SELECT symbol, symbol as name, instrument_key, COALESCE(instrument_type, 'OPTION') as sector
+      FROM watchlist_items
+      WHERE instrument_key = ${instrumentKey}
+      LIMIT 1;
+    `;
+    if (rows.length > 0) {
+      stockMeta = rows[0] as unknown as StockRow;
+    }
+  }
+
+  if (!stockMeta) {
+    const rows = await sql`
+      SELECT symbol, symbol as name, instrument_key, COALESCE(instrument_type, 'OPTION') as sector
+      FROM watchlist_items
+      WHERE symbol = ${cleanSymbol}
+      LIMIT 1;
+    `;
+    if (rows.length > 0) {
+      stockMeta = rows[0] as unknown as StockRow;
+    }
+  }
+
   // Fallback defaults if symbol not in stocks catalog
   const instKey = stockMeta?.instrument_key || instrumentKey || `NSE_EQ|${cleanSymbol}`;
   const symbolName = stockMeta?.name || cleanSymbol;
-  const sector = stockMeta?.sector || "NSE Equity";
+  const sector = stockMeta?.sector || (instKey.includes("_FO|") ? "Option Contract" : "NSE Equity");
 
   // 2. Fetch Quote, Previous Day Range, and Intraday 1-minute Candles concurrently
   const [quotesMap, levels, candles1m] = await Promise.all([

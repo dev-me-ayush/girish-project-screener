@@ -147,20 +147,55 @@ export async function getHeaderIndicesQuotes(): Promise<IndexQuote[]> {
   }
 }
 
+const memoryDailyRangeCache = new Map<string, { levels: FibLevels; date: string }>();
+const memoryIntradayCandleCache = new Map<string, { candles: Candle[]; timestamp: number }>();
+const INTRADAY_CACHE_TTL_MS = 15_000;
+
+/**
+ * Robust fetch with automatic retry on Upstox 429 Rate Limiting
+ */
+async function fetchUpstoxWithRetry(url: string, maxRetries = 2): Promise<Response> {
+  let lastResponse: Response | null = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetch(url, { headers: getHeaders(), cache: "no-store" });
+      if (res.status === 429) {
+        lastResponse = res;
+        if (attempt < maxRetries) {
+          const delayMs = 400 * Math.pow(2, attempt) + Math.floor(Math.random() * 200);
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          continue;
+        }
+      }
+      return res;
+    } catch (err) {
+      if (attempt === maxRetries) throw err;
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+  }
+  return lastResponse || fetch(url, { headers: getHeaders(), cache: "no-store" });
+}
+
 /**
  * Fetch Previous Day High (PDH), Low (PDL), Close (PDC)
  */
 export async function getPreviousDayRange(instrumentKey: string): Promise<FibLevels> {
-  try {
-    const now = new Date();
-    const istOffsetMs = 5.5 * 60 * 60 * 1000;
-    const istDate = new Date(now.getTime() + istOffsetMs);
-    const todayIST = istDate.toISOString().split("T")[0];
+  const normKey = instrumentKey.replace(":", "|");
+  const now = new Date();
+  const istOffsetMs = 5.5 * 60 * 60 * 1000;
+  const istDate = new Date(now.getTime() + istOffsetMs);
+  const todayIST = istDate.toISOString().split("T")[0];
 
+  const cached = memoryDailyRangeCache.get(normKey);
+  if (cached && cached.date === todayIST && cached.levels.range > 0) {
+    return cached.levels;
+  }
+
+  try {
     const today = new Date().toISOString().split("T")[0];
     const fromDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     const url = `${UPSTOX_BASE_URL}/historical-candle/${encodeURIComponent(instrumentKey)}/day/${today}/${fromDate}`;
-    const res = await fetch(url, { headers: getHeaders(), cache: "no-store" });
+    const res = await fetchUpstoxWithRetry(url);
     if (!res.ok) {
       throw new Error(`Historical daily request failed: ${res.status}`);
     }
@@ -175,10 +210,19 @@ export async function getPreviousDayRange(instrumentKey: string): Promise<FibLev
       const pdh = Number(prevBar[2]);
       const pdl = Number(prevBar[3]);
       const pdc = Number(prevBar[4]);
-      return calculateFibLevels(pdh, pdl, pdc);
+      const levels = calculateFibLevels(pdh, pdl, pdc);
+      if (levels.range > 0) {
+        memoryDailyRangeCache.set(normKey, { levels, date: todayIST });
+      }
+      return levels;
     }
   } catch (err) {
     console.error(`Error fetching daily range for ${instrumentKey}:`, err);
+  }
+
+  // Fallback to previous cached levels if available rather than returning zeroes
+  if (cached && cached.levels.range > 0) {
+    return cached.levels;
   }
 
   return calculateFibLevels(0, 0, 0);
@@ -191,26 +235,35 @@ export async function getIntradayCandles(
   instrumentKey: string,
   timeframe: "1m" | "2m" | "3m" | "5m" | "15m" = "1m"
 ): Promise<Candle[]> {
+  const normKey = instrumentKey.replace(":", "|");
+  const intervalParam =
+    timeframe === "2m"
+      ? "2minute"
+      : timeframe === "3m"
+      ? "3minute"
+      : timeframe === "5m"
+      ? "5minute"
+      : timeframe === "15m"
+      ? "15minute"
+      : "1minute";
+
+  const cacheKey = `${normKey}_${intervalParam}`;
+  const now = Date.now();
+  const cached = memoryIntradayCandleCache.get(cacheKey);
+  if (cached && now - cached.timestamp < INTRADAY_CACHE_TTL_MS && cached.candles.length > 0) {
+    return cached.candles;
+  }
+
   try {
-    const intervalParam =
-      timeframe === "2m"
-        ? "2minute"
-        : timeframe === "3m"
-        ? "3minute"
-        : timeframe === "5m"
-        ? "5minute"
-        : timeframe === "15m"
-        ? "15minute"
-        : "1minute";
     const url = `${UPSTOX_BASE_URL}/historical-candle/intraday/${encodeURIComponent(instrumentKey)}/${intervalParam}`;
-    const res = await fetch(url, { headers: getHeaders(), cache: "no-store" });
+    const res = await fetchUpstoxWithRetry(url);
     if (!res.ok) {
       throw new Error(`Intraday candle request failed: ${res.status}`);
     }
     const json = await res.json();
     const rawCandles = json.data?.candles || [];
 
-    return rawCandles.map((c: [string, number, number, number, number, number, number]) => ({
+    const candles = rawCandles.map((c: [string, number, number, number, number, number, number]) => ({
       timestamp: c[0],
       open: Number(c[1]),
       high: Number(c[2]),
@@ -219,8 +272,16 @@ export async function getIntradayCandles(
       volume: Number(c[5] || 0),
       oi: Number(c[6] || 0),
     }));
+
+    if (candles.length > 0) {
+      memoryIntradayCandleCache.set(cacheKey, { candles, timestamp: now });
+    }
+    return candles;
   } catch (err) {
     console.error(`Error fetching intraday candles for ${instrumentKey}:`, err);
+    if (cached && cached.candles.length > 0) {
+      return cached.candles;
+    }
     return [];
   }
 }
@@ -449,7 +510,10 @@ export async function getUnderlyingFnoOI(instrumentKey: string): Promise<number>
  * - Strictly ATM +- 7 Strikes (7 Calls + 7 Puts + 1 ATM = 15 strikes total)
  * - Excludes any strike outside this range
  */
-export async function getIndexOptionChain(underlyingKey: string): Promise<{
+export async function getIndexOptionChain(
+  underlyingKey: string,
+  strikeRadius: number = 7
+): Promise<{
   underlying: {
     name: string;
     spotPrice: number;
@@ -518,9 +582,9 @@ export async function getIndexOptionChain(underlyingKey: string): Promise<{
     }
   }
 
-  // 6. Strictly slice ATM -7 to ATM +7 (Max 15 strikes)
-  const startIdx = Math.max(0, closestIdx - 7);
-  const endIdx = Math.min(uniqueStrikes.length, closestIdx + 8);
+  // 6. Strictly slice ATM -strikeRadius to ATM +strikeRadius
+  const startIdx = Math.max(0, closestIdx - strikeRadius);
+  const endIdx = Math.min(uniqueStrikes.length, closestIdx + strikeRadius + 1);
   const allowedStrikes = uniqueStrikes.slice(startIdx, endIdx);
 
   // 7. Format the resulting options

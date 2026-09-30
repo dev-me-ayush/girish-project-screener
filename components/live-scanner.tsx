@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   MultiWatchlistSymbolResult,
   MultiWatchlistScanResponse,
@@ -28,6 +28,7 @@ export function LiveScanner() {
   const [isScanning, setIsScanning] = useState(false);
   const [lastScannedAt, setLastScannedAt] = useState<string>("");
   const [isWlDropdownOpen, setIsWlDropdownOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const wlDropdownRef = useRef<HTMLDivElement>(null);
 
   // 1. Initial Load of Saved Watchlists
@@ -124,7 +125,19 @@ export function LiveScanner() {
     [selectedWlIds]
   );
 
-  const breakoutCount = screenerResults.filter((r) => r.breakout?.hasBroken).length;
+  const filteredResults = useMemo(() => {
+    if (!searchQuery.trim()) return screenerResults;
+    const q = searchQuery.trim().toLowerCase();
+    return screenerResults.filter(
+      (r) =>
+        r.symbol.toLowerCase().includes(q) ||
+        (r.instrumentType && r.instrumentType.toLowerCase().includes(q)) ||
+        r.watchlistName.toLowerCase().includes(q) ||
+        (r.breakout && r.breakout.statusLabel.toLowerCase().includes(q))
+    );
+  }, [screenerResults, searchQuery]);
+
+  const breakoutCount = filteredResults.filter((r) => r.breakout?.hasBroken).length;
 
   return (
     <div className="flex flex-col w-full flex-1 min-h-[calc(100dvh-3.5rem)] bg-ink relative">
@@ -286,12 +299,34 @@ export function LiveScanner() {
             <RefreshIcon className={`h-3 w-3 ${isScanning ? "animate-spin" : ""}`} />
             <span>{isScanning ? "Scanning..." : "Scan Selected"}</span>
           </button>
+
+          <span className="h-3 w-px bg-zinc-800 shrink-0 hidden sm:inline" />
+
+          {/* Symbol Search Input */}
+          <div className="relative flex items-center">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search symbol, strike, CE/PE..."
+              className="h-7 w-36 sm:w-56 rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 text-[11px] font-mono text-paper placeholder-zinc-500 focus:outline-none focus:border-zinc-600 transition-colors"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 text-zinc-500 hover:text-paper text-[10px]"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Right Side: Telemetry, Timestamp, and Refresh */}
         <div className="flex items-center gap-3 shrink-0 ml-4">
           <div className="hidden md:flex items-center gap-2 text-[11px] font-mono text-zinc-400">
-            <span>{screenerResults.length} Symbols</span>
+            <span>{filteredResults.length} Symbols</span>
             <span className="text-zinc-700">•</span>
             <span className={breakoutCount > 0 ? "text-paper font-semibold" : "text-zinc-500"}>
               {breakoutCount} {breakoutCount === 1 ? "Breakout" : "Breakouts"}
@@ -432,7 +467,7 @@ export function LiveScanner() {
 
           {/* Table Body */}
           <tbody className="divide-y divide-zinc-800/80">
-            {screenerResults.length === 0 ? (
+            {filteredResults.length === 0 ? (
               <tr>
                 <td colSpan={13} className="py-20 text-center text-zinc-500">
                   {isScanning ? (
@@ -444,7 +479,9 @@ export function LiveScanner() {
                     </div>
                   ) : (
                     <span className="text-xs font-mono text-zinc-500">
-                      {selectedWlIds.length === 0
+                      {searchQuery
+                        ? `No contracts matching "${searchQuery}".`
+                        : selectedWlIds.length === 0
                         ? "No watchlists selected. Choose one or more watchlists from the header to run screener."
                         : "No symbols currently found in the selected watchlists."}
                     </span>
@@ -452,7 +489,7 @@ export function LiveScanner() {
                 </td>
               </tr>
             ) : (
-              screenerResults.map((item, idx) => {
+              filteredResults.map((item, idx) => {
                 const isPositive = item.netChange > 0;
                 const isNegative = item.netChange < 0;
                 const b = item.breakout;
