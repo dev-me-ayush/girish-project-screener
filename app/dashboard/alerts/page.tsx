@@ -3,11 +3,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
 import { DashboardShell } from "@/components/dashboard-shell";
-import { AlertsViewer } from "@/components/alerts-viewer";
+import { BreakoutAlertsView } from "@/components/scanner/breakout-alerts-view";
 
 export const metadata: Metadata = {
-  title: "Alerts Log · Dashboard",
-  description: "Historical log of Fibonacci AC and DC 38.2% crossover events.",
+  title: "Breakout Alerts · Dashboard",
+  description: "Live institutional feed of confirmed 5m Fibonacci AC/DC 38.2% breakout events.",
   robots: { index: false, follow: false },
 };
 
@@ -32,7 +32,7 @@ export default async function DashboardAlertsPage() {
 
   return (
     <DashboardShell user={user}>
-      <AlertsViewer />
+      <BreakoutAlertsView />
     </DashboardShell>
   );
 }

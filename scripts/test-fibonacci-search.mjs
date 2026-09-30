@@ -165,9 +165,9 @@ async function run() {
         const pdh = Number(prevBar[2]);
         const pdl = Number(prevBar[3]);
         const pdc = Number(prevBar[4]);
-        const range = Number(Math.max(0, pdh - pdl).toFixed(2));
-        const ac38_2 = Number((pdh - 0.382 * range).toFixed(2));
-        const dc38_2 = Number((pdl + 0.382 * range).toFixed(2));
+        const delta = Number((range * 0.382 * 1.236).toFixed(2));
+        const ac38_2 = pdc > 0 ? Number((pdc + delta).toFixed(2)) : Number((pdh - 0.382 * range).toFixed(2));
+        const dc38_2 = pdc > 0 ? Number((pdc - delta).toFixed(2)) : Number((pdl + 0.382 * range).toFixed(2));
         console.log(`Previous Session Date: ${prevBar[0]}`);
         console.log(`PDH: ${pdh}, PDL: ${pdl}, PDC: ${pdc}, Range: ${range}`);
         console.log(`AC 38.2%: ${ac38_2}, DC 38.2%: ${dc38_2}`);

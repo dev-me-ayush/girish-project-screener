@@ -1,38 +1,5 @@
-import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { sql } from "@/lib/db";
-import { DashboardShell } from "@/components/dashboard-shell";
-import { FibonacciTerminal } from "@/components/fibonacci-terminal";
 
-export const metadata: Metadata = {
-  title: "Fibonacci Levels · Dashboard",
-  description: "Live 5-Timeframe Fibonacci Levels and Intraday Breakout Inspector for 2,680+ NSE stocks.",
-  robots: { index: false, follow: false },
-};
-
-export default async function DashboardFibonacciPage() {
-  const cookieStore = await cookies();
-  const sessionUser = cookieStore.get("session_user")?.value;
-
-  if (!sessionUser) {
-    redirect("/sign-in");
-  }
-
-  const users = await sql`
-    SELECT id, email, name FROM users WHERE email = ${sessionUser} LIMIT 1
-  `;
-  const user = (users[0] as {
-    id?: string;
-    email: string;
-    name?: string;
-  }) || {
-    email: sessionUser,
-  };
-
-  return (
-    <DashboardShell user={user}>
-      <FibonacciTerminal />
-    </DashboardShell>
-  );
+export default function DashboardFibonacciPage() {
+  redirect("/dashboard/scanner");
 }

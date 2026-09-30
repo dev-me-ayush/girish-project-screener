@@ -3,11 +3,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
 import { DashboardShell } from "@/components/dashboard-shell";
-import { LiveScanner } from "@/components/live-scanner";
+import { MarketScreenerView } from "@/components/scanner/market-screener-view";
 
 export const metadata: Metadata = {
-  title: "Watchlist Screener · Dashboard",
-  description: "Live Multi-Watchlist Screener tracking institutional Fibonacci levels.",
+  title: "5m Market Screener · Dashboard",
+  description: "2,732-Instrument Full Market 5-Minute Fibonacci AC/DC Screener.",
   robots: { index: false, follow: false },
 };
 
@@ -32,7 +32,7 @@ export default async function DashboardScannerPage() {
 
   return (
     <DashboardShell user={user}>
-      <LiveScanner />
+      <MarketScreenerView />
     </DashboardShell>
   );
 }

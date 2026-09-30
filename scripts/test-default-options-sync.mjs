@@ -153,10 +153,12 @@ async function testSync() {
     const prev = candles[0];
     const pdh = Number(prev[2]);
     const pdl = Number(prev[3]);
+    const pdc = Number(prev[4]);
     const range = pdh - pdl;
-    const ac38_2 = Number((pdh - 0.382 * range).toFixed(2));
-    const dc38_2 = Number((pdl + 0.382 * range).toFixed(2));
-    console.log(`  PDH: ₹${pdh}, PDL: ₹${pdl}, Range: ₹${range.toFixed(2)}`);
+    const delta = Number((range * 0.382 * 1.236).toFixed(2));
+    const ac38_2 = pdc > 0 ? Number((pdc + delta).toFixed(2)) : Number((pdh - 0.382 * range).toFixed(2));
+    const dc38_2 = pdc > 0 ? Number((pdc - delta).toFixed(2)) : Number((pdl + 0.382 * range).toFixed(2));
+    console.log(`  PDH: ₹${pdh}, PDL: ₹${pdl}, PDC: ₹${pdc}, Range: ₹${range.toFixed(2)}`);
     console.log(`  AC 38.2% (Upper): ₹${ac38_2}, DC 38.2% (Lower): ₹${dc38_2}`);
   } else {
     console.log("  New listing / zero prior session bars.");

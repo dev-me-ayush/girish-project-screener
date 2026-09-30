@@ -86,16 +86,17 @@ async function testFibonacciCalculation() {
   console.log("\n[TEST 3] Testing Fibonacci AC/DC 38.2% Math & Crossover Logic...");
   const pdh = 23080.25;
   const pdl = 22762.20;
+  const pdc = 22950.00;
   const range = Number((pdh - pdl).toFixed(2));
-  const ac38_2 = Number((pdh - 0.382 * range).toFixed(2));
-  const dc38_2 = Number((pdl + 0.382 * range).toFixed(2));
+  const delta = Number((range * 0.382 * 1.236).toFixed(2));
+  const ac38_2 = Number((pdc + delta).toFixed(2));
+  const dc38_2 = Number((pdc - delta).toFixed(2));
 
-  console.log(`  PDH: ${pdh} | PDL: ${pdl} | Range: ${range}`);
+  console.log(`  PDH: ${pdh} | PDL: ${pdl} | PDC: ${pdc} | Range: ${range}`);
   console.log(`  AC 38.2%: ${ac38_2}`);
   console.log(`  DC 38.2%: ${dc38_2}`);
 
-  if (ac38_2 >= pdh || ac38_2 <= pdl) throw new Error("AC 38.2% out of bounds");
-  if (dc38_2 >= pdh || dc38_2 <= pdl) throw new Error("DC 38.2% out of bounds");
+  if (ac38_2 <= pdc || dc38_2 >= pdc) throw new Error("AC/DC 38.2% out of bounds relative to PDC");
   console.log("✓ Fibonacci AC/DC 38.2% mathematically sound!");
 }
 

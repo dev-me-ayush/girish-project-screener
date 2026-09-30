@@ -9,6 +9,7 @@ import {
   BoltIcon,
   ChartBarIcon,
 } from "@/components/icons";
+import { HeaderMarketStatus } from "@/components/scanner/header-market-status";
 import { signOut } from "@/app/sign-in/actions";
 
 interface DashboardShellProps {
@@ -28,21 +29,21 @@ const DASHBOARD_TABS = [
     icon: LayersIcon,
   },
   {
-    name: "Watchlist",
-    href: "/dashboard/watchlists",
-    matcher: (path: string) => path.startsWith("/dashboard/watchlists"),
-    icon: BookmarkIcon,
-  },
-  {
-    name: "Watchlist Screener",
+    name: "5m Screener",
     href: "/dashboard/scanner",
     matcher: (path: string) => path.startsWith("/dashboard/scanner"),
     icon: BoltIcon,
   },
   {
-    name: "Fibonacci Levels",
-    href: "/dashboard/fibonacci",
-    matcher: (path: string) => path.startsWith("/dashboard/fibonacci"),
+    name: "My Watchlist",
+    href: "/dashboard/watchlists",
+    matcher: (path: string) => path.startsWith("/dashboard/watchlists"),
+    icon: BookmarkIcon,
+  },
+  {
+    name: "Alerts Feed",
+    href: "/dashboard/alerts",
+    matcher: (path: string) => path.startsWith("/dashboard/alerts"),
     icon: ChartBarIcon,
   },
 ];
@@ -65,10 +66,7 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
             <Wordmark />
           </Link>
 
-          <div className="hidden items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/80 px-2.5 py-0.5 text-[10px] font-mono text-zinc-400 md:inline-flex">
-            <span className="h-1.5 w-1.5 rounded-full bg-zinc-300" />
-            <span>NSE LIVE</span>
-          </div>
+          <HeaderMarketStatus />
         </div>
 
         {/* Center: Segmented Navigation Switch Tabs */}

@@ -53,8 +53,11 @@ export interface FibBreakoutEvaluation {
  */
 export function calculateFibLevels(pdh: number, pdl: number, pdc: number = 0): FibLevels {
   const range = Number(Math.max(0, pdh - pdl).toFixed(2));
-  const ac38_2 = Number((pdh - 0.382 * range).toFixed(2));
-  const dc38_2 = Number((pdl + 0.382 * range).toFixed(2));
+  // Client specification: Close-anchored Fibonacci expansion volatility bands
+  // Delta = Range * 0.382 * 1.236 (proven 20/20 in client's BSOFT 1-month dataset and 20MICRONS)
+  const delta = Number((range * 0.382 * 1.236).toFixed(2));
+  const ac38_2 = pdc > 0 ? Number((pdc + delta).toFixed(2)) : Number((pdh - 0.382 * range).toFixed(2));
+  const dc38_2 = pdc > 0 ? Number((pdc - delta).toFixed(2)) : Number((pdl + 0.382 * range).toFixed(2));
 
   const level0 = pdl;
   const level23_6 = Number((pdl + 0.236 * range).toFixed(2));

@@ -118,8 +118,8 @@ A fully automated, zero-maintenance default options watchlist designed specifica
   - Automatically clears old or expired strikes on weekly rollover—the user never needs to manually add strikes or delete expired contracts.
   - Integrated into `GET /api/watchlists`, scanner execution, and daily maintenance cron (`/api/cron/maintenance`).
 - **Strict 38.2% Fibonacci Breakout Logic**:
-  - Evaluates option premium Previous Day High (`PDH`) and Low (`PDL`).
-  - Calculates `AC 38.2%` ($\text{PDH} - 0.382 \times \text{Range}$) and `DC 38.2%` ($\text{PDL} + 0.382 \times \text{Range}$).
+  - Evaluates option premium Previous Day High (`PDH`), Low (`PDL`), and Close (`PDC`).
+  - Calculates `AC 38.2%` ($\text{PDC} + \text{Range} \times 0.382 \times 1.236$) and `DC 38.2%` ($\text{PDC} - \text{Range} \times 0.382 \times 1.236$).
   - Displays strictly:
     - **`Up Breakout`**: Option premium trades above AC 38.2%.
     - **`Low Breakout`**: Option premium decays below DC 38.2%.
@@ -144,6 +144,25 @@ A fast, focused terminal for inspecting exact Previous Day High/Low ranges, AC/D
 - **Strict Essential Data Focus (Zero Bloat)**:
   - **Panel 1: Execution Metrics**: LTP, Day Change, Open Interest (OI), Session Volume, and Today's High/Low Range.
   - **Panel 2: Previous Day Reference Range**: Previous Day High (PDH), Previous Day Low (PDL), Daily Range Span, and Previous Day Close (PDC).
-  - **Panel 3: Fibonacci 38.2% Levels**: AC 38.2% ($\text{PDH} - 0.382 \times \text{Range}$) and DC 38.2% ($\text{PDL} + 0.382 \times \text{Range}$).
+  - **Panel 3: Fibonacci 38.2% Levels**: AC 38.2% ($\text{PDC} + \text{Range} \times 0.382 \times 1.236$) and DC 38.2% ($\text{PDC} - \text{Range} \times 0.382 \times 1.236$).
   - **Panel 4: Live Intraday Breakout**: Evaluates whether today's price has broken above AC 38.2% (`Up Breakout`), dropped below DC 38.2% (`Low Breakout`), or remained within (`Inside Range`). Rendered in normal white text (`#ffffff`) without unwanted extra text or decorative clutter.
+
+---
+
+## 6. Institutional 5-Minute Screener (`/dashboard/scanner`)
+
+A high-performance market screener monitoring 2,732 instruments (2,680 equities + 52 ATM index option contracts) strictly on a 5-minute cadence.
+
+### Core Features
+- **Dynamic Header Market Indicator (`HeaderMarketStatus`)**:
+  - Moved completely into the global top navigation bar to eliminate wasted vertical page padding.
+  - Powered by `useSyncExternalStore` and `getMarketSessionStatus()` with zero cascading renders.
+  - Real-time updates: `NSE LIVE (09:15–15:30)` with pulsing indicator dot during market hours; `NSE CLOSED (OPENS 09:15)` / `WEEKEND` / `HOLIDAY` during off-market hours.
+- **Single-Line Consolidated Control Cluster (`ScannerToolbar`)**:
+  - Consolidates the **Search input**, **Segmented Filter Tabs**, **IST Clock (`IST HH:MM`)**, **Last Synced Timestamp (`Synced HH:MM`)**, and **Interactive 5m Refresh Button (`[↻ Refresh]`)** into a unified, single horizontal bar.
+  - Eliminates 3–4 stacked tiers of controls down to one row, drastically increasing visible table rows above the fold.
+- **Client-Anchored Fibonacci Breakout Engine**:
+  - Evaluates live LTP against AC 38.2% and DC 38.2% levels using the client ground truth formula.
+  - Generates high-impact flash banner alerts only on fresh crossings.
+  - Buffered asynchronous batch inserts into Neon Postgres (`scanner_alerts`) preventing connection pool saturation.
 

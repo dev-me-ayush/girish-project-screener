@@ -6,11 +6,12 @@ const sql = neon(databaseUrl);
 const token = process.env.UPSTOX_ACCESS_TOKEN;
 const headers = { Accept: "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 
-function calculateFib(pdh, pdl) {
+function calculateFib(pdh, pdl, pdc = 0) {
   const range = Number(Math.max(0, pdh - pdl).toFixed(2));
-  const ac38_2 = Number((pdh - 0.382 * range).toFixed(2));
-  const dc38_2 = Number((pdl + 0.382 * range).toFixed(2));
-  return { pdh, pdl, range, ac38_2, dc38_2 };
+  const delta = Number((range * 0.382 * 1.236).toFixed(2));
+  const ac38_2 = pdc > 0 ? Number((pdc + delta).toFixed(2)) : Number((pdh - 0.382 * range).toFixed(2));
+  const dc38_2 = pdc > 0 ? Number((pdc - delta).toFixed(2)) : Number((pdl + 0.382 * range).toFixed(2));
+  return { pdh, pdl, pdc, range, ac38_2, dc38_2 };
 }
 
 async function testScan() {

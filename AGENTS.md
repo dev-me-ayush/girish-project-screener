@@ -80,6 +80,23 @@ Run the production build only when the change is genuinely large or systemic: a 
 
 Say plainly which checks you ran and which you skipped, and anything that therefore went unverified.
 
+## Fibonacci AC / DC Calculation Directives (Client Standard)
+
+All Fibonacci level calculations MUST strictly follow the client's verified methodology documented in `CLIENT_REQUIREMENTS.md`:
+
+- **AC 38.2% ("Above Close")**:
+  - Anchored to **Previous Day Close (PDC)** with the 123.6% Fibonacci expansion ratio ($1.236$):
+    $$\text{Range} = \text{PDH} - \text{PDL}$$
+    $$\Delta = \text{round}(\text{Range} \times 0.382 \times 1.236, 2) \quad (\text{or } \text{Range} \times 0.472152)$$
+    $$\text{AC 38.2\%} = \text{PDC} + \Delta$$
+- **DC 38.2% ("Down Close / Below Close")**:
+    $$\text{DC 38.2\%} = \text{PDC} - \Delta$$
+- **Average (Pivot)**:
+    $$\text{Average} = \text{round}\left(\frac{\text{PDH} + \text{PDL} + \text{PDC}}{3}, 2\right)$$
+- **Ground Truth Grounding**:
+  - This formula is verified 20/20 against the client's `BSOFT DATA 1 MONTH.xlsx` dataset and `20MICRONS` ($\text{PDH}=216.45, \text{PDL}=209.02, \text{PDC}=212.80 \implies \text{AC}=216.31, \text{DC}=209.29$).
+  - Never revert to the standard high/low retracement ($\text{PDH} - 0.382 \times \text{Range}$).
+
 ## Production AWS Deployment
 
 - **Deployment Type**: AWS App Runner (Containerized Next.js 15 Standalone)
