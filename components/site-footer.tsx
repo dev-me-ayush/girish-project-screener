@@ -10,9 +10,9 @@ export function SiteFooter() {
           <div className="lg:col-span-4">
             <Link
               href="/"
-              className="inline-flex items-center gap-2.5 text-black transition-opacity hover:opacity-80"
+              className="inline-flex items-center gap-2.5 text-paper transition-opacity hover:opacity-80"
             >
-              <Logo className="h-7 w-7 text-black" />
+              <Logo className="h-7 w-7 text-paper" />
               <Wordmark />
             </Link>
 

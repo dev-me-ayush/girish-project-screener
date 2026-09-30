@@ -22,7 +22,7 @@ export function Pricing() {
               key={tier.name}
               className={`reveal relative flex h-full flex-col rounded-xl border p-8 transition-colors duration-300 ${
                 tier.highlighted
-                  ? "border-signal/45 bg-ink-raised shadow-[0_0_60px_-30px_var(--color-signal)]"
+                  ? "border-signal/45 bg-ink-raised shadow-[0_0_50px_-30px_rgba(255,255,255,0.35)]"
                   : "border-line bg-ink hover:border-line-bright"
               }`}
               style={{ "--step": i } as React.CSSProperties}

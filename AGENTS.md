@@ -54,9 +54,9 @@ Environment variables are managed locally in `.env.local` and `.env` (synced via
 
 The application strictly adheres to a minimalist, high-contrast monochrome design system:
 
-- **Theme Palette**: Completely white background (`#ffffff` / `--color-ink: #ffffff`) with black text (`#000000`, `#09090b` / `--color-paper: #09090b`).
-- **No Green Colors**: Green colors (e.g. `#4ade9b`, neon green signals, green glows, phosphor effects) are strictly forbidden. Use crisp black, neutral slate, or zinc for accents and active states.
-- **Borders & Panels**: Crisp hairline borders (`#e2e8f0`) and clean white panels (`#ffffff`).
+- **Theme Palette**: Completely black background (`#09090b` / `--color-ink: #09090b`) with white text (`#ffffff` / `--color-paper: #ffffff`) and white secondary accents (`--color-signal: #ffffff`).
+- **No Green Colors**: Green colors (e.g. `#4ade9b`, neon green signals, green glows, phosphor effects) are strictly forbidden. Use crisp white, neutral zinc, or slate for accents and active states.
+- **Borders & Panels**: Crisp hairline borders (`#27272a`) and clean black panels (`#131315` / `#18181b`).
 - **Zero Demo Content**: Dashboard must only display grounded, real data (Neon PostgreSQL tables). No fake marketing claims, demo latency metrics, or synthetic tickers.
 
 ## Routing & Navigation Standards
@@ -88,7 +88,7 @@ Say plainly which checks you ran and which you skipped, and anything that theref
 - **Active Service ID**: `4d5be7400d7f47aebc8744ae37b026db`
 - **Service ARN**: `arn:aws:apprunner:ap-south-1:513329232477:service/girish-screener/4d5be7400d7f47aebc8744ae37b026db`
 - **ECR Repository**: `513329232477.dkr.ecr.ap-south-1.amazonaws.com/girish-screener:latest`
-- **Secrets Manager**: `tessera/production` (`DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `NEON_BRANCH`, `NEON_PROJECT_ID`)
+- **Secrets Manager**: `tessera/production` (`DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `NEON_BRANCH`, `NEON_PROJECT_ID`, `UPSTOX_ACCESS_TOKEN`)
 - **AutoScaling**: `girish-screener-scaling` (`min_size: 1`, `max_size: 2` — always active, zero cold start)
 - **Health Check Probe**: HTTP `GET /api/health` on port `3000` (Interval: 5s, Timeout: 4s)
 - **Host Binding Directive**: `HOSTNAME="0.0.0.0"` enforced inside container CMD to ensure App Runner and local health probes bind to all interfaces.

@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { ArrowIcon, SearchIcon } from "@/components/icons";
+import { ArrowIcon } from "@/components/icons";
 import { ScannerPreview } from "@/components/scanner-preview";
 import { site } from "@/lib/site";
 import type { ScreenerStock } from "@/lib/stocks";
 
 export function Hero({ stocks }: { stocks?: ScreenerStock[] }) {
   return (
-    <section className="bloom relative overflow-hidden pt-16 pb-20 sm:pt-24 sm:pb-28">
+    <section className="bloom relative overflow-hidden py-16 sm:py-24">
       <div className="graph pointer-events-none absolute inset-0 -z-10" />
 
       <div className="mx-auto w-full max-w-6xl px-5 sm:px-8">
@@ -36,18 +36,7 @@ export function Hero({ stocks }: { stocks?: ScreenerStock[] }) {
                 {site.hero.primary.label}
                 <ArrowIcon className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
               </Link>
-              <Link
-                href={site.hero.secondary.href}
-                className="inline-flex h-12 items-center gap-2 rounded-full border border-line-bright px-6 text-sm text-paper transition-colors hover:border-signal/50 hover:bg-ink-raised"
-              >
-                {site.hero.secondary.label}
-              </Link>
             </div>
-
-            <p className="mt-6 flex items-center gap-2 text-xs text-faint">
-              <SearchIcon className="h-3.5 w-3.5" />
-              No card required. 500 symbols a day, free.
-            </p>
           </div>
 
           <div
@@ -58,21 +47,6 @@ export function Hero({ stocks }: { stocks?: ScreenerStock[] }) {
             <ScannerPreview stocks={stocks} />
           </div>
         </div>
-
-        <dl className="mt-20 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-3">
-          {site.hero.proof.map((item, i) => (
-            <div
-              key={item.label}
-              className="reveal bg-ink px-5 py-7 sm:px-7"
-              style={{ "--step": i } as React.CSSProperties}
-            >
-              <dt className="tabular text-3xl tracking-tight text-paper sm:text-4xl">
-                {item.value}
-              </dt>
-              <dd className="eyebrow mt-2.5 text-faint">{item.label}</dd>
-            </div>
-          ))}
-        </dl>
       </div>
     </section>
   );

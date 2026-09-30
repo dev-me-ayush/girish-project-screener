@@ -1,18 +1,18 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-ink: #ffffff;
-  --color-ink-raised: #f8fafc;
-  --color-panel: #ffffff;
-  --color-line: #e2e8f0;
-  --color-line-bright: #cbd5e1;
-  --color-paper: #09090b;
-  --color-muted: #52525b;
-  --color-faint: #71717a;
-  --color-signal: #09090b;
-  --color-signal-dim: #27272a;
-  --color-amber: #d97706;
-  --color-drop: #dc2626;
+  --color-ink: #09090b;
+  --color-ink-raised: #18181b;
+  --color-panel: #131315;
+  --color-line: #27272a;
+  --color-line-bright: #3f3f46;
+  --color-paper: #ffffff;
+  --color-muted: #a1a1aa;
+  --color-faint: #8e8e96;
+  --color-signal: #ffffff;
+  --color-signal-dim: #d4d4d8;
+  --color-amber: #fbbf24;
+  --color-drop: #f87171;
 
   --font-display: var(--font-instrument), var(--font-tiro);
   --font-sans: var(--font-geist), var(--font-mukta);
@@ -37,12 +37,12 @@
   }
 
   ::selection {
-    background-color: #09090b;
-    color: #ffffff;
+    background-color: #ffffff;
+    color: #09090b;
   }
 
   :focus-visible {
-    outline: 2px solid #09090b;
+    outline: 2px solid #ffffff;
     outline-offset: 3px;
     border-radius: 2px;
   }
@@ -52,7 +52,7 @@
   border: 1px solid var(--color-line);
 }
 
-/* Subtle clean white gradient */
+/* Subtle dark glow on black */
 @utility bloom {
   position: relative;
   isolation: isolate;
@@ -66,17 +66,17 @@
     pointer-events: none;
     background: radial-gradient(
       40rem 20rem at 50% 0%,
-      rgba(241, 245, 249, 0.8),
+      rgba(63, 63, 70, 0.35),
       transparent 70%
     );
   }
 }
 
-/* Engineering grid, clean and subtle on white. */
+/* Engineering grid, subtle on black. */
 @utility graph {
   background-image:
-    linear-gradient(to right, rgba(226, 232, 240, 0.4) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(226, 232, 240, 0.4) 1px, transparent 1px);
+    linear-gradient(to right, rgba(63, 63, 70, 0.5) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(63, 63, 70, 0.5) 1px, transparent 1px);
   background-size: 4rem 4rem;
   mask-image: radial-gradient(60% 50% at 50% 30%, black, transparent 80%);
 }

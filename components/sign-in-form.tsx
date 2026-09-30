@@ -27,22 +27,14 @@ export function SignInForm() {
             required
             autoFocus
             placeholder="you@example.com"
-            className="mt-2.5 h-12 w-full rounded-lg border border-line bg-white px-4 text-sm text-black transition-colors placeholder:text-faint hover:border-line-bright focus:border-black focus:outline-none"
+            className="mt-2.5 h-12 w-full rounded-lg border border-line bg-ink px-4 text-sm text-paper transition-colors placeholder:text-faint hover:border-line-bright focus:border-signal focus:outline-none"
           />
         </div>
 
         <div>
-          <div className="flex items-baseline justify-between gap-4">
-            <label htmlFor="password" className="eyebrow block text-faint">
-              Password
-            </label>
-            <a
-              href="#"
-              className="text-xs text-muted underline underline-offset-4 transition-colors hover:text-black"
-            >
-              Forgot password?
-            </a>
-          </div>
+          <label htmlFor="password" className="eyebrow block text-faint">
+            Password
+          </label>
           <div className="relative mt-2.5">
             <input
               id="password"
@@ -51,12 +43,12 @@ export function SignInForm() {
               autoComplete="current-password"
               required
               placeholder="••••••••"
-              className="h-12 w-full rounded-lg border border-line bg-white pr-16 pl-4 text-sm text-black transition-colors placeholder:text-faint hover:border-line-bright focus:border-black focus:outline-none"
+              className="h-12 w-full rounded-lg border border-line bg-ink pr-16 pl-4 text-sm text-paper transition-colors placeholder:text-faint hover:border-line-bright focus:border-signal focus:outline-none"
             />
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              className="absolute inset-y-0 right-0 flex w-16 items-center justify-end pr-4 text-xs text-faint transition-colors hover:text-black"
+              className="absolute inset-y-0 right-0 flex w-16 items-center justify-end pr-4 text-xs text-faint transition-colors hover:text-paper"
             >
               {showPassword ? "Hide" : "Show"}
               <span className="sr-only"> password</span>
@@ -76,7 +68,7 @@ export function SignInForm() {
         <button
           type="submit"
           disabled={pending}
-          className="h-12 w-full rounded-full bg-black text-sm font-medium text-white transition-transform duration-200 hover:-translate-y-px hover:bg-zinc-800 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+          className="h-12 w-full rounded-full bg-signal text-sm font-medium text-ink transition-transform duration-200 hover:-translate-y-px hover:bg-signal-dim active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
         >
           {pending ? "Signing in…" : "Sign in"}
         </button>

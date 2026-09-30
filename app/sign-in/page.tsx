@@ -20,13 +20,13 @@ export default async function SignInPage() {
     redirect("/dashboard/overview");
   }
   return (
-    <div className="relative flex min-h-dvh flex-col bg-white text-black">
+    <div className="relative flex min-h-dvh flex-col bg-ink text-paper">
       <header className="mx-auto w-full max-w-6xl px-5 py-6 sm:px-8">
         <Link
           href="/"
-          className="inline-flex items-center gap-2.5 text-black transition-opacity hover:opacity-80"
+          className="inline-flex items-center gap-2.5 text-paper transition-opacity hover:opacity-80"
         >
-          <Logo className="h-7 w-7 text-black" />
+          <Logo className="h-7 w-7 text-paper" />
           <Wordmark />
         </Link>
       </header>
@@ -35,7 +35,7 @@ export default async function SignInPage() {
         <div className="mx-auto grid w-full max-w-5xl gap-14 lg:grid-cols-12 lg:items-center">
           <div className="rise lg:col-span-6 lg:col-start-3">
             <div className="mx-auto w-full max-w-sm">
-              <h1 className="font-display text-4xl sm:text-5xl font-bold tracking-tight text-black">
+              <h1 className="font-display text-4xl sm:text-5xl font-bold tracking-tight text-paper">
                 Welcome back
               </h1>
               <p className="mt-4 text-sm leading-relaxed text-muted">
@@ -50,14 +50,14 @@ export default async function SignInPage() {
                 Signing in means you accept our{" "}
                 <Link
                   href="#"
-                  className="text-muted underline underline-offset-4 transition-colors hover:text-black"
+                  className="text-muted underline underline-offset-4 transition-colors hover:text-paper"
                 >
                   Terms
                 </Link>{" "}
                 and{" "}
                 <Link
                   href="#"
-                  className="text-muted underline underline-offset-4 transition-colors hover:text-black"
+                  className="text-muted underline underline-offset-4 transition-colors hover:text-paper"
                 >
                   Privacy Policy
                 </Link>
@@ -67,7 +67,7 @@ export default async function SignInPage() {
           </div>
 
           <aside className="hidden lg:col-span-4 lg:col-start-9 lg:block">
-            <div className="rounded-xl border border-line bg-slate-50/60 p-7">
+            <div className="rounded-xl border border-line bg-ink-raised p-7">
               <p className="eyebrow text-faint font-semibold">{site.market.status}</p>
               <dl className="mt-5 space-y-3.5">
                 {site.market.tape.slice(0, 5).map((row) => (
@@ -77,9 +77,9 @@ export default async function SignInPage() {
                   >
                     <dt className="eyebrow text-faint">{row.label}</dt>
                     <dd className="tabular flex items-baseline gap-2.5 text-sm">
-                      <span className="font-medium text-black">{row.value}</span>
+                      <span className="font-medium text-paper">{row.value}</span>
                       <span
-                        className={`text-xs font-medium ${row.up ? "text-black" : "text-drop"}`}
+                        className={`text-xs font-medium ${row.up ? "text-signal" : "text-drop"}`}
                       >
                         {row.change}
                       </span>

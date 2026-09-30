@@ -1,37 +1,19 @@
-import { ClosingCta } from "@/components/closing-cta";
-import { Faq } from "@/components/faq";
-import { Features } from "@/components/features";
-import { Hero } from "@/components/hero";
-import { Pricing } from "@/components/pricing";
-import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { Stats } from "@/components/stats";
-import { Steps } from "@/components/steps";
-import { Testimonials } from "@/components/testimonials";
-import { TickerTape } from "@/components/ticker-tape";
+import { Hero } from "@/components/hero";
 import { getScreenerStocks } from "@/lib/stocks";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-
   const stocks = await getScreenerStocks();
 
   return (
-    <>
+    <div className="flex min-h-dvh flex-col bg-ink text-paper selection:bg-paper selection:text-ink antialiased">
       <SiteHeader />
-      <TickerTape />
-      <main className="flex-1">
+      <main className="flex flex-1 flex-col justify-center">
         <Hero stocks={stocks} />
-        <Stats />
-        <Features />
-        <Steps />
-        <Testimonials />
-        <Pricing />
-        <Faq />
-        <ClosingCta />
       </main>
-      <SiteFooter />
-    </>
+    </div>
   );
 }
+

@@ -7,7 +7,7 @@ export function ScannerPreview({ stocks }: { stocks?: ScreenerStock[] }) {
   const displayRows = stocks && stocks.length > 0 ? stocks : site.screener.rows;
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-line bg-panel shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)]">
+    <div className="relative overflow-hidden rounded-xl border border-line bg-panel shadow-[0_30px_80px_-40px_rgba(255,255,255,0.18)]">
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-px bg-gradient-to-r from-transparent via-signal/60 to-transparent" />
 
       <div className="flex items-center gap-2 border-b border-line px-4 py-3">
