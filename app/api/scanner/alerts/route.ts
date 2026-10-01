@@ -33,24 +33,34 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // 2. Query alerts strictly belonging to user's watchlist symbols
+    // IST calendar day: the engine stamps session_date in IST, while the
+    // database clock runs UTC — passing IST explicitly avoids leaking the
+    // previous session's rows around midnight UTC.
+    const istToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+
+    // Alerts strictly for the user's watchlist, from today's session only,
+    // and only events that fired after the symbol was pinned.
     const alerts = await sql`
-      SELECT 
-        sa.id, 
-        sa.symbol, 
-        sa.instrument_key, 
-        sa.instrument_type, 
-        sa.timeframe, 
-        sa.level_name, 
-        sa.level_price, 
-        sa.trigger_price, 
-        sa.direction, 
-        sa.breach_count, 
-        sa.session_date, 
-        sa.breakout_time, 
+      SELECT
+        sa.id,
+        sa.symbol,
+        sa.instrument_key,
+        sa.instrument_type,
+        sa.timeframe,
+        sa.level_name,
+        sa.level_price,
+        sa.trigger_price,
+        sa.direction,
+        sa.breach_count,
+        sa.session_date,
+        sa.breakout_time,
         sa.triggered_at
       FROM scanner_alerts sa
-      WHERE sa.symbol = ANY(${userSymbols})
+      JOIN user_pinned_symbols ups
+        ON ups.symbol = sa.symbol
+        AND ups.user_email = ${userEmail}
+      WHERE sa.session_date = ${istToday}::DATE
+        AND sa.triggered_at >= ups.created_at
       ORDER BY sa.triggered_at DESC
       LIMIT ${limit};
     `;

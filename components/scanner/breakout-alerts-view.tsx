@@ -70,7 +70,7 @@ export function BreakoutAlertsView() {
             Breakout Alerts
           </h1>
           <p className="text-[13px] leading-relaxed text-zinc-400">
-            Confirmed 1m AC/DC 38.2% breaches for your watchlist · auto-refreshes every 15s
+            Today&apos;s confirmed 1m AC/DC 38.2% breaches for your watchlist · auto-refreshes every 15s
           </p>
         </div>
 
