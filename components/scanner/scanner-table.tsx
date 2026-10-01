@@ -25,27 +25,31 @@ export function ScannerTable({
   const currentChunk = instruments.slice(startIndex, startIndex + pageSize);
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-950 font-mono shadow-sm">
+    <section
+      aria-label="1-minute screener results"
+      aria-live="polite"
+      className="fade-in overflow-hidden rounded-xl border border-line bg-panel font-mono shadow-sm"
+    >
       {/* Table Container */}
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-zinc-800 bg-zinc-900/60 text-[11px] text-zinc-400">
-              <th className="w-10 px-3 py-3 text-center">Pin</th>
-              <th className="w-12 px-3 py-3">#</th>
-              <th className="px-3 py-3">Symbol</th>
-              <th className="px-3 py-3 text-right">5m LTP</th>
-              <th className="px-3 py-3 text-right">Day Chg</th>
-              <th className="px-3 py-3 text-right">PDH</th>
-              <th className="px-3 py-3 text-right">PDL</th>
-              <th className="px-3 py-3 text-right">PDC</th>
-              <th className="px-3 py-3 text-right">AC 38.2%</th>
-              <th className="px-3 py-3 text-right">DC 38.2%</th>
-              <th className="px-3 py-3">5m Status</th>
-              <th className="px-3 py-3 text-right">Time</th>
+            <tr className="border-b border-line bg-zinc-950/60 text-[11px] uppercase tracking-[0.12em] text-zinc-400">
+              <th className="w-10 px-3 py-3 text-center font-medium">Pin</th>
+              <th className="w-12 px-3 py-3 font-medium">#</th>
+              <th className="px-3 py-3 font-medium">Symbol</th>
+              <th className="px-3 py-3 text-right font-medium">1m LTP</th>
+              <th className="px-3 py-3 text-right font-medium">Day Chg</th>
+              <th className="px-3 py-3 text-right font-medium">PDH</th>
+              <th className="px-3 py-3 text-right font-medium">PDL</th>
+              <th className="px-3 py-3 text-right font-medium">PDC</th>
+              <th className="px-3 py-3 text-right font-medium">AC 38.2%</th>
+              <th className="px-3 py-3 text-right font-medium">DC 38.2%</th>
+              <th className="px-3 py-3 font-medium">1m Status</th>
+              <th className="px-3 py-3 text-right font-medium">Time</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-line">
             {currentChunk.length > 0 ? (
               currentChunk.map((item, idx) => (
                 <ScannerRow
@@ -58,8 +62,11 @@ export function ScannerTable({
               ))
             ) : (
               <tr>
-                <td colSpan={12} className="py-12 text-center text-xs text-zinc-500">
-                  No matching instruments found.
+                <td colSpan={12} className="px-4 py-12 text-center">
+                  <p className="font-sans text-sm font-medium text-paper">No matching instruments</p>
+                  <p className="mt-1 text-[11px] text-zinc-500">
+                    Try another filter tab — or hit Refresh.
+                  </p>
                 </td>
               </tr>
             )}
@@ -69,7 +76,7 @@ export function ScannerTable({
 
       {/* Pagination Controls */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between border-t border-zinc-800 px-4 py-3 text-xs text-zinc-400">
+        <div className="flex items-center justify-between gap-2 border-t border-line bg-ink/60 px-4 py-3 text-[11px] text-zinc-400 tabular">
           <span>
             Showing {startIndex + 1}–{Math.min(startIndex + pageSize, instruments.length)} of {instruments.length}
           </span>
@@ -77,7 +84,7 @@ export function ScannerTable({
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={safeCurrentPage === 1}
-              className="rounded border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-white hover:border-zinc-600 disabled:opacity-40 transition-colors"
+              className="rounded-md border border-line bg-zinc-900 px-2.5 py-1 text-paper transition-colors hover:border-zinc-700 hover:bg-zinc-800 disabled:opacity-40"
             >
               Previous
             </button>
@@ -87,13 +94,13 @@ export function ScannerTable({
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={safeCurrentPage === totalPages}
-              className="rounded border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-white hover:border-zinc-600 disabled:opacity-40 transition-colors"
+              className="rounded-md border border-line bg-zinc-900 px-2.5 py-1 text-paper transition-colors hover:border-zinc-700 hover:bg-zinc-800 disabled:opacity-40"
             >
               Next
             </button>
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }

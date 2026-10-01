@@ -149,9 +149,9 @@ A fast, focused terminal for inspecting exact Previous Day High/Low ranges, AC/D
 
 ---
 
-## 6. Institutional 5-Minute Screener (`/dashboard/scanner`)
+## 6. Institutional 1-Minute Screener (`/dashboard/scanner`)
 
-A high-performance market screener monitoring 2,732 instruments (2,680 equities + 52 ATM index option contracts) strictly on a 5-minute cadence.
+A high-performance market screener monitoring 2,732 instruments (2,680 equities + 52 ATM index option contracts) on an ultra-responsive 1-minute cadence.
 
 ### Core Features
 - **Dynamic Header Market Indicator (`HeaderMarketStatus`)**:
@@ -159,10 +159,26 @@ A high-performance market screener monitoring 2,732 instruments (2,680 equities 
   - Powered by `useSyncExternalStore` and `getMarketSessionStatus()` with zero cascading renders.
   - Real-time updates: `NSE LIVE (09:15–15:30)` with pulsing indicator dot during market hours; `NSE CLOSED (OPENS 09:15)` / `WEEKEND` / `HOLIDAY` during off-market hours.
 - **Single-Line Consolidated Control Cluster (`ScannerToolbar`)**:
-  - Consolidates the **Search input**, **Segmented Filter Tabs**, **IST Clock (`IST HH:MM`)**, **Last Synced Timestamp (`Synced HH:MM`)**, and **Interactive 5m Refresh Button (`[↻ Refresh]`)** into a unified, single horizontal bar.
+  - Consolidates the **Search input**, **Segmented Filter Tabs**, **IST Clock (`IST HH:MM`)**, **Last Synced Timestamp (`Synced HH:MM`)**, and **Interactive 1m Refresh Button (`[↻ Refresh]`)** into a unified, single horizontal bar.
   - Eliminates 3–4 stacked tiers of controls down to one row, drastically increasing visible table rows above the fold.
+- **High-Velocity 1-Minute Scan Pipeline**:
+  - Automatically polls every 60 seconds with server-side in-memory caching (TTL 50s) to absorb concurrent user loads.
+  - Consumes only 6 Upstox HTTP quote requests per minute (500 symbols/request), utilizing only 1.2% of Upstox rate limits.
+  - In-memory cached equities catalog and preloaded daily levels eliminate per-minute database query overhead.
+- **Clean Tabular Screener (Zero Banner Intrusions)**:
+  - Breakout banners and intrusive alerts removed entirely from the screener surface to preserve institutional focus and table density.
+  - Breakout alerts reside exclusively in the dedicated **Alerts Feed** (`/dashboard/alerts`).
+- **Watchlist-Scoped Alerts Feed (`/dashboard/alerts`)**:
+  - The alert feed strictly filters events to symbols present in the user's watchlist (`watchlist_items`) or pinned items (`user_pinned_symbols`).
+  - Eliminates noise from 2,700+ non-watchlist instruments and delivers focused breakout telemetry for portfolio holdings.
+- **Production-Grade Excel Export (`Download as Excel`)**:
+  - Integrated directly adjacent to the segmented tabs switch on the screener toolbar, pinned watchlist view, and alerts feed.
+  - Dynamically exports currently active view: `[All (2,732)]`, `[Equities (2,680)]`, `[Options (52)]`, `[Up Breakouts]`, `[Low Breakouts]`, `[★ Watchlist]`, or custom searches.
+  - Generates RFC 4180 CSV with UTF-8 Byte Order Mark (`\uFEFF`) and CRLF line breaks, opening seamlessly in Microsoft Excel, macOS Numbers, and Google Sheets without encoding warnings.
+  - Core columns exported: `Symbol Name`, `Type`, `1-Minute LTP`, `Day Change`, `PDH`, `PDL`, `PDC`, `AC 38.2%`, `DC 38.2%`, `Status`, `Breach Count`, and `Trigger Time`.
 - **Client-Anchored Fibonacci Breakout Engine**:
   - Evaluates live LTP against AC 38.2% and DC 38.2% levels using the client ground truth formula.
-  - Generates high-impact flash banner alerts only on fresh crossings.
+  - Strict `ltp > 0` validation to permanently eliminate illiquid zero-price instruments from false breakdown triggers.
+  - Distinct Multiple Trigger Tracking: Instead of collapsing multiple crossings into a generic "2x" tag, each breach is logged and displayed as an individual, distinct trigger event (`Trigger #1`, `Trigger #2`, etc.) with its exact trigger price and high-precision IST timestamp (`HH:mm:ss`).
   - Buffered asynchronous batch inserts into Neon Postgres (`scanner_alerts`) preventing connection pool saturation.
 

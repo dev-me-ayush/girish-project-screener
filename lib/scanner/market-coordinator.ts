@@ -12,6 +12,7 @@ export interface UnifiedScannedInstrument {
   underlying?: string;
   strike_price?: number;
   option_type?: "CE" | "PE";
+  expiry?: string;
   ltp: number;
   net_change: number;
   volume: number;
@@ -32,10 +33,15 @@ export interface MarketScanPayload {
 }
 
 let cachedPayload: { data: MarketScanPayload; timestamp: number } | null = null;
-const CACHE_TTL_MS = 4 * 60 * 1000; // 4 minutes
+const CACHE_TTL_MS = 50 * 1000; // 50 seconds (1-minute cadence)
+
+// In-memory cache for static stocks catalog to eliminate Neon DB query overhead on 1m scans
+let cachedStocks: Array<{ symbol: string; instrument_key: string }> | null = null;
+let cachedStocksTimestamp = 0;
+const STOCKS_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 /**
- * High-speed 5-minute Market Coordinator for 2,732 instruments (2,680 equities + 52 ATM options)
+ * High-speed 1-minute Market Coordinator for 2,732 instruments (2,680 equities + 52 ATM options)
  */
 export async function runFullMarketScan(forceRefresh: boolean = false): Promise<MarketScanPayload> {
   const now = Date.now();
@@ -45,12 +51,17 @@ export async function runFullMarketScan(forceRefresh: boolean = false): Promise<
 
   const session = getMarketSessionStatus();
 
-  // 1. Load all 2,680 equities from Neon PostgreSQL
-  const dbStocks = await sql`
-    SELECT symbol, instrument_key
-    FROM stocks
-    ORDER BY symbol ASC;
-  `;
+  // 1. Load all 2,680 equities (reusing in-memory cache to prevent per-minute DB query load)
+  if (!cachedStocks || now - cachedStocksTimestamp > STOCKS_CACHE_TTL_MS) {
+    const dbStocks = await sql`
+      SELECT symbol, instrument_key
+      FROM stocks
+      ORDER BY symbol ASC;
+    `;
+    cachedStocks = dbStocks as Array<{ symbol: string; instrument_key: string }>;
+    cachedStocksTimestamp = now;
+  }
+  const dbStocks = cachedStocks;
 
   // 2. Load 52 active ATM options
   const optionsContracts: ResolvedOptionContract[] = await getActiveAtmOptionsContracts();
@@ -130,6 +141,7 @@ export async function runFullMarketScan(forceRefresh: boolean = false): Promise<
       underlying: opt.underlying,
       strike_price: opt.strike_price,
       option_type: opt.option_type,
+      expiry: opt.expiry,
       ltp,
       net_change: q ? q.net_change : 0,
       volume: q ? q.volume : 0,

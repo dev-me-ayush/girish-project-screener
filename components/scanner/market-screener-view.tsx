@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { UnifiedScannedInstrument, MarketScanPayload } from "@/lib/scanner/market-coordinator";
-import { BreakoutBanner } from "./breakout-banner";
 import { ScannerToolbar, FilterTab } from "./scanner-toolbar";
 import { ScannerTable } from "./scanner-table";
+import { exportInstrumentsToExcel } from "@/lib/export-excel";
 
 export function MarketScreenerView() {
   const [data, setData] = useState<MarketScanPayload | null>(null);
@@ -13,7 +13,6 @@ export function MarketScreenerView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<FilterTab>("ALL");
   const [pinnedSet, setPinnedSet] = useState<Set<string>>(new Set());
-  const [recentBreakout, setRecentBreakout] = useState<UnifiedScannedInstrument | null>(null);
 
   // Fetch live market data
   const loadMarketData = useCallback(async (force: boolean = false) => {
@@ -23,12 +22,6 @@ export function MarketScreenerView() {
       if (!res.ok) throw new Error("Failed to load market scan");
       const json: MarketScanPayload = await res.json();
       setData(json);
-
-      // Check for prominent recent breakout
-      const fresh = json.instruments.find((i) => i.breakout.isFreshCrossing);
-      if (fresh) {
-        setRecentBreakout(fresh);
-      }
     } catch (err) {
       console.error("Error fetching market data:", err);
     } finally {
@@ -36,7 +29,6 @@ export function MarketScreenerView() {
       setIsRefreshing(false);
     }
   }, []);
-
 
   useEffect(() => {
     let isMounted = true;
@@ -51,8 +43,6 @@ export function MarketScreenerView() {
         if (marketRes.ok && isMounted) {
           const json: MarketScanPayload = await marketRes.json();
           setData(json);
-          const fresh = json.instruments.find((i) => i.breakout.isFreshCrossing);
-          if (fresh) setRecentBreakout(fresh);
         }
 
         if (pinRes.ok && isMounted) {
@@ -70,7 +60,7 @@ export function MarketScreenerView() {
     init();
     const interval = setInterval(() => {
       loadMarketData();
-    }, 5 * 60 * 1000);
+    }, 60 * 1000); // 1-minute cadence
 
     return () => {
       isMounted = false;
@@ -103,7 +93,7 @@ export function MarketScreenerView() {
     }
   };
 
-  // Filter instruments based on search and active tab
+  // Filter instruments by active tab + search
   const filteredInstruments = useMemo(() => {
     if (!data?.instruments) return [];
     let list = data.instruments;
@@ -115,7 +105,7 @@ export function MarketScreenerView() {
     else if (activeTab === "LOW_BREAKOUTS") list = list.filter((i) => i.breakout.direction === "LOW");
     else if (activeTab === "PINNED") list = list.filter((i) => pinnedSet.has(i.symbol));
 
-    // Filter by Search Query
+    // Filter by search query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       list = list.filter(
@@ -127,13 +117,13 @@ export function MarketScreenerView() {
     }
 
     return list;
-  }, [data, activeTab, searchQuery, pinnedSet]);
+  }, [data, activeTab, pinnedSet, searchQuery]);
 
   if (isLoading && !data) {
     return (
-      <div className="flex min-h-[400px] flex-col items-center justify-center font-mono text-xs text-zinc-400">
-        <span className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-700 border-t-white mb-3" />
-        <span>Loading full 2,732-instrument market scan...</span>
+      <div className="mx-auto flex min-h-[400px] w-full max-w-[1440px] flex-col items-center justify-center px-4 font-mono text-xs text-zinc-400">
+        <span className="mb-3 h-6 w-6 animate-spin rounded-full border-2 border-zinc-700 border-t-white" />
+        <span>Loading 1-minute market scan...</span>
       </div>
     );
   }
@@ -148,14 +138,21 @@ export function MarketScreenerView() {
   };
 
   return (
-    <div className="space-y-3">
-      {/* Prominent High-Impact Flash Banner */}
-      <BreakoutBanner
-        recentBreakout={recentBreakout}
-        onDismiss={() => setRecentBreakout(null)}
-      />
+    <div className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col px-4 py-6 sm:px-6 sm:py-8">
+      {/* Workspace heading — matches overview rhythm */}
+      <div className="flex flex-col gap-1.5 pb-5 sm:pb-6">
+        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-400">
+          1-Minute Screener
+        </p>
+        <h1 className="text-xl font-semibold tracking-[-0.02em] text-paper sm:text-2xl">
+          Breakout Scan
+        </h1>
+        <p className="text-[13px] leading-relaxed text-zinc-400">
+          {counts.total.toLocaleString("en-IN")} instruments · {counts.up} up · {counts.low} low · Fibonacci AC/DC 38.2
+        </p>
+      </div>
 
-      {/* Toolbar & Filters with Unified Single-Line Controls */}
+      {/* Search + download + refresh / filter tabs — no time display */}
       <ScannerToolbar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -164,17 +161,17 @@ export function MarketScreenerView() {
         counts={counts}
         onRefresh={() => loadMarketData(true)}
         isRefreshing={isRefreshing}
-        currentTimeIST={data?.session?.currentTimeIST}
-        lastScannedAt={data?.scannedAt}
-        isMarketOpen={data?.session?.isMarketOpen}
+        onDownload={() => exportInstrumentsToExcel(filteredInstruments, activeTab)}
       />
 
-      {/* Virtualized/Paginated 2,732-Instrument Table */}
-      <ScannerTable
-        instruments={filteredInstruments}
-        pinnedSet={pinnedSet}
-        onTogglePin={handleTogglePin}
-      />
+      {/* 1-minute instrument table */}
+      <div className="mt-3">
+        <ScannerTable
+          instruments={filteredInstruments}
+          pinnedSet={pinnedSet}
+          onTogglePin={handleTogglePin}
+        />
+      </div>
     </div>
   );
 }

@@ -25,10 +25,10 @@ export function BreakoutBanner({ recentBreakout, onDismiss }: BreakoutBannerProp
         <div>
           <div className="flex items-center gap-2">
             <span className="font-bold text-white tracking-wider">
-              {isUp ? "UP BREAKOUT [5m]" : "LOW BREAKOUT [5m]"}
+              {isUp ? "UP BREAKOUT [1m]" : "LOW BREAKOUT [1m]"}
             </span>
-            <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300">
-              {breakout.breachCount}x Breach Today
+            <span className="rounded border border-zinc-700 bg-zinc-800 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-200">
+              Trigger #{breakout.breachCount}
             </span>
           </div>
           <p className="mt-0.5 text-xs text-zinc-300">

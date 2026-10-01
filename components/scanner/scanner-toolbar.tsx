@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { RefreshIcon, SearchIcon } from "@/components/icons";
 
 export type FilterTab = "ALL" | "EQUITIES" | "OPTIONS" | "UP_BREAKOUTS" | "LOW_BREAKOUTS" | "PINNED";
 
@@ -19,9 +20,7 @@ interface ScannerToolbarProps {
   };
   onRefresh: () => void;
   isRefreshing?: boolean;
-  currentTimeIST?: string;
-  lastScannedAt?: string;
-  isMarketOpen?: boolean;
+  onDownload: () => void;
 }
 
 export function ScannerToolbar({
@@ -32,9 +31,7 @@ export function ScannerToolbar({
   counts,
   onRefresh,
   isRefreshing,
-  currentTimeIST,
-  lastScannedAt,
-  isMarketOpen = false,
+  onDownload,
 }: ScannerToolbarProps) {
   const tabs: Array<{ id: FilterTab; label: string; count: number }> = [
     { id: "ALL", label: "All", count: counts.total },
@@ -42,57 +39,86 @@ export function ScannerToolbar({
     { id: "OPTIONS", label: "Options", count: counts.options },
     { id: "UP_BREAKOUTS", label: "Up Breakouts", count: counts.up },
     { id: "LOW_BREAKOUTS", label: "Low Breakouts", count: counts.low },
-    { id: "PINNED", label: "★ Watchlist", count: counts.pinned },
+    { id: "PINNED", label: "Watchlist", count: counts.pinned },
   ];
 
-  const formattedLastSync = lastScannedAt
-    ? new Date(lastScannedAt).toLocaleTimeString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      })
-    : "--:--";
-
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2.5 font-mono">
-      {/* Left: Compact Symbol & Strike Search */}
-      <div className="relative w-full sm:w-64 md:w-72">
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Search 2,732 symbols, strikes..."
-          className="h-8 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 text-xs text-white placeholder-zinc-500 transition-colors focus:border-zinc-500 focus:outline-none"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => onSearchChange("")}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-zinc-500 hover:text-white"
-          >
-            ✕
-          </button>
-        )}
+    <div className="flex flex-col gap-2.5">
+      {/* Row 1: search (flex-grow) + download + refresh */}
+      <div className="flex items-center gap-2">
+        <div className="relative min-w-0 flex-1">
+          <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Search symbols, underlyings, strikes..."
+            aria-label="Search screener instruments"
+            className="h-8 w-full rounded-lg border border-line bg-zinc-900/40 pl-8 pr-8 font-mono text-[11px] text-paper placeholder-zinc-500 transition-colors focus:border-zinc-600 focus:bg-zinc-900/70 focus:outline-none"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => onSearchChange("")}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-xs leading-none text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-paper"
+            >
+              ×
+            </button>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={onDownload}
+          title="Download instruments as Excel (.csv)"
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-line bg-zinc-900 px-3 font-mono text-[11px] font-medium text-paper transition-colors hover:border-zinc-700 hover:bg-zinc-800 active:scale-[0.98]"
+        >
+          <svg className="h-3 w-3 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
+          <span className="hidden sm:inline">Download</span>
+        </button>
+
+        {/* Refresh only — no time display */}
+        <button
+          type="button"
+          onClick={onRefresh}
+          disabled={isRefreshing}
+          aria-label="Refresh 1-minute screener"
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-line bg-zinc-900 px-3 font-mono text-[11px] font-medium text-paper transition-colors hover:border-zinc-700 hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50"
+        >
+          <RefreshIcon
+            className={`h-3 w-3 ${isRefreshing ? "animate-spin text-paper" : "text-zinc-400"}`}
+          />
+          <span>{isRefreshing ? "Syncing" : "Refresh"}</span>
+        </button>
       </div>
 
-      {/* Center: Filter Tabs */}
-      <div className="flex items-center overflow-x-auto rounded-md border border-zinc-800 bg-zinc-950 p-0.5 scrollbar-none">
+      {/* Row 2: filter tabs — full-width scroll */}
+      <div
+        role="tablist"
+        aria-label="Screener filters"
+        className="flex min-w-0 items-center gap-0.5 overflow-x-auto rounded-lg border border-line bg-zinc-900/90 p-0.5 scrollbar-none"
+      >
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
+              role="tab"
+              aria-selected={isActive}
               onClick={() => onTabChange(tab.id)}
-              className={`flex items-center gap-1.5 whitespace-nowrap rounded px-2.5 py-1 text-xs transition-colors ${
+              className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-1 font-mono text-[11px] transition-colors ${
                 isActive
-                  ? "bg-zinc-800 text-white font-semibold shadow-xs"
-                  : "text-zinc-400 hover:text-white hover:bg-zinc-900/50"
+                  ? "bg-paper font-semibold text-ink shadow-xs"
+                  : "text-zinc-400 hover:bg-zinc-800/60 hover:text-paper"
               }`}
             >
               <span>{tab.label}</span>
               <span
-                className={`rounded px-1 text-[10px] ${
-                  isActive ? "bg-zinc-700 text-white" : "bg-zinc-900 text-zinc-500"
+                className={`rounded px-1 tabular ${
+                  isActive ? "bg-zinc-800/15 text-ink" : "bg-zinc-900 text-zinc-500"
                 }`}
               >
                 {tab.count}
@@ -100,37 +126,6 @@ export function ScannerToolbar({
             </button>
           );
         })}
-      </div>
-
-      {/* Right: Single-Line Timings, Last Sync, and Refresh Control Group */}
-      <div className="flex h-8 items-center gap-2 rounded-md border border-zinc-800 bg-zinc-950 px-2.5 text-xs text-zinc-400">
-        {isMarketOpen ? (
-          <>
-            <div className="flex items-center gap-1">
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider">IST</span>
-              <span className="font-semibold text-white">{currentTimeIST || "--:--"}</span>
-            </div>
-
-            <span className="text-zinc-700">·</span>
-
-            <div className="flex items-center gap-1 text-[11px] text-zinc-400">
-              <span className="text-zinc-500">Synced:</span>
-              <span className="text-zinc-300">{formattedLastSync}</span>
-            </div>
-
-            <span className="text-zinc-700">·</span>
-          </>
-        ) : null}
-
-        <button
-          onClick={onRefresh}
-          disabled={isRefreshing}
-          className="flex items-center gap-1.5 rounded bg-zinc-900 px-2 py-0.5 text-xs font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
-          title="Force 5-minute Market Refresh"
-        >
-          <span className={isRefreshing ? "animate-spin" : ""}>↻</span>
-          <span>{isRefreshing ? "Syncing..." : "Refresh"}</span>
-        </button>
       </div>
     </div>
   );

@@ -6,8 +6,8 @@ import { DashboardShell } from "@/components/dashboard-shell";
 import { MarketScreenerView } from "@/components/scanner/market-screener-view";
 
 export const metadata: Metadata = {
-  title: "5m Market Screener · Dashboard",
-  description: "2,732-Instrument Full Market 5-Minute Fibonacci AC/DC Screener.",
+  title: "1-Minute Market Screener · Dashboard",
+  description: "2,732-Instrument Full Market 1-Minute Fibonacci AC/DC Screener.",
   robots: { index: false, follow: false },
 };
 

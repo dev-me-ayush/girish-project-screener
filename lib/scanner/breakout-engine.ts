@@ -13,6 +13,7 @@ export interface BreakoutEvaluationResult {
   breachCount: number;
   firstBreachTime: string | null;
   latestBreachTime: string | null;
+  breachTimes: string[];
   isFreshCrossing: boolean;
 }
 
@@ -22,6 +23,7 @@ interface SymbolSessionState {
   breachCount: number;
   firstBreachTime: string | null;
   latestBreachTime: string | null;
+  breachTimes: string[];
   sessionDate: string;
 }
 
@@ -59,7 +61,7 @@ export async function flushPendingAlerts(): Promise<void> {
             level_name, level_type, level_price, trigger_price, direction,
             breach_count, session_date, breakout_time
           ) VALUES (
-            ${a.symbol}, ${a.instrument_key}, ${a.instrument_type}, '5m',
+            ${a.symbol}, ${a.instrument_key}, ${a.instrument_type}, '1m',
             ${a.level_name}, ${a.level_name}, ${a.level_price}, ${a.trigger_price}, ${a.direction},
             ${a.breach_count}, ${a.session_date}::DATE, ${a.breakout_time}
           )
@@ -71,10 +73,10 @@ export async function flushPendingAlerts(): Promise<void> {
 }
 
 /**
- * Evaluates whether an instrument has broken above AC 38.2% or below DC 38.2% on a 5m interval,
+ * Evaluates whether an instrument has broken above AC 38.2% or below DC 38.2% on a 1m interval,
  * tracking state transitions, breach counts, and inserting lean alerts into Neon Postgres.
  */
-export async function evaluate5mBreakout(
+export async function evaluateBreakout(
   symbol: string,
   ltp: number,
   levels: StockReferenceLevel,
@@ -91,6 +93,7 @@ export async function evaluate5mBreakout(
       breachCount: 0,
       firstBreachTime: null,
       latestBreachTime: null,
+      breachTimes: [],
       sessionDate: session_date,
     };
     memoryState.set(symbol, state);
@@ -108,6 +111,7 @@ export async function evaluate5mBreakout(
       breachCount: 0,
       firstBreachTime: null,
       latestBreachTime: null,
+      breachTimes: [],
       isFreshCrossing: false,
     };
   }
@@ -117,12 +121,13 @@ export async function evaluate5mBreakout(
   let levelName: string | null = null;
   let levelPrice: number | null = null;
 
-  if (ac38_2 > 0 && ltp > ac38_2) {
+  // Strict ltp > 0 check to permanently prevent illiquid/zero-quote symbols from falsely triggering breakdowns
+  if (ltp > 0 && ac38_2 > 0 && ltp > ac38_2) {
     newDirection = "UP";
     status = "Up Breakout";
     levelName = "AC 38.2%";
     levelPrice = ac38_2;
-  } else if (dc38_2 > 0 && ltp < dc38_2) {
+  } else if (ltp > 0 && dc38_2 > 0 && ltp < dc38_2) {
     newDirection = "LOW";
     status = "Low Breakout";
     levelName = "DC 38.2%";
@@ -137,9 +142,12 @@ export async function evaluate5mBreakout(
       state.firstBreachTime = currentTimeIST;
     }
     state.latestBreachTime = currentTimeIST;
+    if (!state.breachTimes.includes(currentTimeIST)) {
+      state.breachTimes.push(currentTimeIST);
+    }
     state.currentDirection = newDirection;
 
-    // Buffer alert into memory queue for batched ingestion
+    // Buffer alert into memory queue for batched ingestion as distinct event
     const directionLabel = newDirection === "UP" ? "BULLISH" : "BEARISH";
     pendingAlerts.push({
       symbol,
@@ -168,6 +176,10 @@ export async function evaluate5mBreakout(
     breachCount: isLiveMarket ? state.breachCount : 0,
     firstBreachTime: isLiveMarket ? state.firstBreachTime : null,
     latestBreachTime: isLiveMarket ? state.latestBreachTime : null,
+    breachTimes: isLiveMarket ? [...state.breachTimes] : [],
     isFreshCrossing,
   };
 }
+
+export const evaluate1mBreakout = evaluateBreakout;
+export const evaluate5mBreakout = evaluateBreakout;

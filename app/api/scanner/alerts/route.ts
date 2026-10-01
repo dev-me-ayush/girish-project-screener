@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
@@ -8,28 +9,55 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const limit = Math.min(100, parseInt(searchParams.get("limit") || "50", 10));
 
+    const cookieStore = await cookies();
+    const sessionEmail = cookieStore.get("session_user")?.value || "girishsir@my.app.com";
+    const userEmail = searchParams.get("email") || sessionEmail;
+
+    // Single default watchlist: user_pinned_symbols only (pinned from All Stocks).
+    // Legacy multi-watchlist tables (watchlists / watchlist_items) are retired
+    // and must not contribute to the count or the alert feed.
+    const userSymbolsResult = await sql`
+      SELECT DISTINCT symbol FROM user_pinned_symbols
+      WHERE user_email = ${userEmail};
+    `;
+
+    const userSymbols = userSymbolsResult.map((r) => r.symbol as string).filter(Boolean);
+
+    // If user has 0 symbols in their watchlist, return empty alert feed
+    if (userSymbols.length === 0) {
+      return NextResponse.json({
+        status: "success",
+        watchlistSymbolsCount: 0,
+        count: 0,
+        alerts: [],
+      });
+    }
+
+    // 2. Query alerts strictly belonging to user's watchlist symbols
     const alerts = await sql`
       SELECT 
-        id, 
-        symbol, 
-        instrument_key, 
-        instrument_type, 
-        timeframe, 
-        level_name, 
-        level_price, 
-        trigger_price, 
-        direction, 
-        breach_count, 
-        session_date, 
-        breakout_time, 
-        triggered_at
-      FROM scanner_alerts
-      ORDER BY triggered_at DESC
+        sa.id, 
+        sa.symbol, 
+        sa.instrument_key, 
+        sa.instrument_type, 
+        sa.timeframe, 
+        sa.level_name, 
+        sa.level_price, 
+        sa.trigger_price, 
+        sa.direction, 
+        sa.breach_count, 
+        sa.session_date, 
+        sa.breakout_time, 
+        sa.triggered_at
+      FROM scanner_alerts sa
+      WHERE sa.symbol = ANY(${userSymbols})
+      ORDER BY sa.triggered_at DESC
       LIMIT ${limit};
     `;
 
     return NextResponse.json({
       status: "success",
+      watchlistSymbolsCount: userSymbols.length,
       count: alerts.length,
       alerts,
     });

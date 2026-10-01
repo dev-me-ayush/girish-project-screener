@@ -106,5 +106,5 @@ Stocks and options often cross their AC 38.2% or DC 38.2% thresholds multiple ti
 
 ### B. High-Liquidity Index Options Integration
 - **Universe**: Automatically discovers nearest weekly expiry for **NIFTY 50** (ATM ± 7 strikes = 30 contracts) and **BANK NIFTY** (ATM ± 5 strikes = 22 contracts).
-- **Batch Processing**: 2,680 equities + 52 options = 2,732 instruments. Handled within the **exact same 6-batch Upstox quote cycle** ($2,732 / 500 = 6$ HTTP calls every 5 minutes).
+- **Batch Processing**: 2,680 equities + 52 options = 2,732 instruments. Handled within the **exact same 6-batch Upstox quote cycle** ($2,732 / 500 = 6$ HTTP calls every 1 minute). Consumes only 1.2% of Upstox 500 req/min rate limit and 9% of 30-minute limit.
 - **Tabs Filter**: One-click toggles for `[All (2,732)]`, `[Equities (2,680)]`, `[Options (52)]`, `[Up Breakouts]`, `[Low Breakouts]`, and `[★ My Watchlist]`.

@@ -74,6 +74,17 @@ export async function fetchBatchQuotes(
         results.set(normalizedKey, quote);
         results.set(symbol, quote);
         results.set(key, quote);
+
+        // Upstox keys derivative responses by exchange trading symbol
+        // (e.g. "NSE_FO:NIFTY26O0622200CE") instead of the requested token id
+        // (e.g. "NSE_FO|40675"). Index by instrument_token so coordinator
+        // lookups by instrument_key hit for OPTIONS (equities keep working
+        // via the symbol index above).
+        const token = raw.instrument_token as string | undefined;
+        if (typeof token === "string" && token.length > 0) {
+          results.set(token, quote);
+          results.set(token.replace(":", "|"), quote);
+        }
       }
     } catch (err) {
       console.error(`Error in batch quote chunk ${i + 1}:`, err);

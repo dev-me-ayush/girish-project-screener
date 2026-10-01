@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserPinnedSymbols, togglePinnedSymbol } from "@/lib/scanner/pinned-watchlist";
+import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
+
+async function resolveSessionEmail(searchEmail: string | null, bodyEmail?: string) {
+  const cookieStore = await cookies();
+  const sessionEmail = cookieStore.get("session_user")?.value || "girishsir@my.app.com";
+  return (searchEmail || bodyEmail || sessionEmail || "girishsir@my.app.com").trim();
+}
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const email = searchParams.get("email") || "girishsir@my.app.com";
+    const email = await resolveSessionEmail(searchParams.get("email"));
     const items = await getUserPinnedSymbols(email);
     return NextResponse.json({ status: "success", count: items.length, items });
   } catch (err: unknown) {
@@ -28,7 +35,7 @@ export async function POST(req: NextRequest) {
       symbol,
       instrumentKey,
       instrumentType || "EQUITY",
-      email || "girishsir@my.app.com"
+      await resolveSessionEmail(null, email)
     );
 
     return NextResponse.json({ status: "success", ...result });

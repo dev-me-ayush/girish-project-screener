@@ -55,7 +55,7 @@ export function getMarketSessionStatus(date: Date = new Date()): MarketSessionSt
   const minute = parseInt(partMap.minute, 10);
 
   const sessionDate = `${year}-${month}-${day}`;
-  const currentTimeIST = `${partMap.hour}:${partMap.minute}`;
+  const currentTimeIST = `${partMap.hour}:${partMap.minute}:${partMap.second}`;
 
   // Check weekday (0 = Sun, 6 = Sat in IST)
   const istDate = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
@@ -92,7 +92,7 @@ export function getMarketSessionStatus(date: Date = new Date()): MarketSessionSt
       status: "OPEN",
       sessionDate,
       currentTimeIST,
-      label: "MARKET OPEN (5M SCANNING ACTIVE)",
+      label: "MARKET OPEN (1M SCANNING ACTIVE)",
     };
   }
 
@@ -102,7 +102,7 @@ export function getMarketSessionStatus(date: Date = new Date()): MarketSessionSt
       status: "PRE_MARKET",
       sessionDate,
       currentTimeIST,
-      label: "PRE-MARKET (PREPARING 5M LEVELS)",
+      label: "PRE-MARKET (PREPARING 1M LEVELS)",
     };
   }
 

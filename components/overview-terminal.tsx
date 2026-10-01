@@ -129,32 +129,37 @@ export function OverviewTerminal({
     : "--:--:--";
 
   return (
-    <div className="flex flex-1 flex-col w-full min-h-0 bg-ink">
-      {/* Top Status & Cadence Control Bar */}
-      <div className="flex h-12 w-full items-center justify-between border-b border-line bg-ink px-4 sm:px-6">
-        <div className="flex items-center gap-3">
+    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-4 py-6 sm:px-6 sm:py-10">
+      {/* Workspace heading — vertically breathing, optically centered group */}
+      <div className="flex flex-col gap-4 pb-5 sm:flex-row sm:items-end sm:justify-between sm:pb-6">
+        <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-paper" />
-            <h1 className="text-xs font-mono font-semibold uppercase tracking-wider text-paper">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute h-full w-full rounded-full bg-paper opacity-40 blip" />
+              <span className="h-2 w-2 rounded-full bg-paper" />
+            </span>
+            <p className="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-400">
               Benchmark Surveillance
-            </h1>
+            </p>
           </div>
-          <span className="hidden sm:inline-block h-3 w-px bg-line" />
-          <span className="hidden sm:inline-block text-[11px] font-mono text-zinc-400">
-            Real-Time Prices & Fibonacci AC/DC 38.2
-          </span>
+          <h1 className="text-xl font-semibold tracking-[-0.02em] text-paper sm:text-2xl">
+            Market Overview
+          </h1>
+          <p className="text-[13px] leading-relaxed text-zinc-400">
+            Real-time prices with Fibonacci AC/DC 38.2 levels
+          </p>
         </div>
 
-        <div className="flex items-center gap-3 sm:gap-4">
-          <div className="flex items-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-900/80 px-2 py-1 text-[11px] font-mono text-zinc-300">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+          <div className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line bg-zinc-900/80 px-2.5 font-mono text-[11px] text-zinc-300 tabular">
             <span className="text-zinc-500">Close in</span>
-            <span className="font-semibold text-paper w-5 text-right">
+            <span className="w-6 text-right font-semibold text-paper">
               {secondsToNextMinute}s
             </span>
           </div>
 
-          <div className="hidden md:flex items-center gap-1.5 text-[11px] font-mono text-zinc-400">
-            <span className="text-zinc-500">Last Synced:</span>
+          <div className="hidden h-8 items-center gap-1.5 rounded-lg border border-line bg-zinc-900/40 px-2.5 font-mono text-[11px] text-zinc-400 md:inline-flex tabular">
+            <span className="text-zinc-500">Synced</span>
             <span className="text-zinc-200">{formattedTime}</span>
           </div>
 
@@ -163,7 +168,7 @@ export function OverviewTerminal({
             onClick={() => fetchIndices(true)}
             disabled={isRefreshing}
             aria-label="Refresh live indices"
-            className="inline-flex h-7 items-center gap-1.5 rounded-md border border-line bg-zinc-900 px-2.5 text-xs font-mono font-medium text-paper transition-all hover:bg-zinc-800 active:scale-95 disabled:opacity-50"
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line bg-zinc-900 px-3 font-mono text-[11px] font-medium text-paper transition-colors hover:border-zinc-700 hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50 focus-visible:outline-paper"
           >
             <RefreshIcon
               className={`h-3 w-3 ${isRefreshing ? "animate-spin text-paper" : "text-zinc-400"}`}
@@ -173,20 +178,35 @@ export function OverviewTerminal({
         </div>
       </div>
 
-      {/* Edge-to-edge Full-Width Institutional Table with continuous left-to-right dividers */}
-      <div className="flex-1 w-full overflow-x-auto">
-        <table className="w-full border-collapse font-mono text-left">
-          <thead>
-            <tr className="border-b border-line bg-zinc-950/60 text-[11px] uppercase tracking-wider text-zinc-400">
-              <th className="py-3 px-4 sm:px-6 font-semibold">Index</th>
-              <th className="py-3 px-4 sm:px-6 text-right font-semibold">Price</th>
-              <th className="py-3 px-4 sm:px-6 text-right font-semibold">Change</th>
-              <th className="py-3 px-4 sm:px-6 text-right font-semibold">AC 38.2</th>
-              <th className="py-3 px-4 sm:px-6 text-right font-semibold">DC 38.2</th>
-              <th className="py-3 px-4 sm:px-6 text-right font-semibold">Date</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line bg-ink">
+      {/* Institutional card — contained, rounded, hairline */}
+      <section
+        aria-label="Benchmark indices"
+        aria-live="polite"
+        className="fade-in overflow-hidden rounded-xl border border-line bg-panel"
+      >
+        <div className="w-full overflow-x-auto">
+          <table className="w-full border-collapse text-left">
+            <thead>
+              <tr className="border-b border-line bg-zinc-950/60 font-mono text-[11px] uppercase tracking-[0.12em] text-zinc-400">
+                <th scope="col" className="px-5 py-3 font-medium">Index</th>
+                <th scope="col" className="px-5 py-3 text-right font-medium">Price</th>
+                <th scope="col" className="px-5 py-3 text-right font-medium">Change</th>
+                <th scope="col" className="px-5 py-3 text-right font-medium">AC 38.2</th>
+                <th scope="col" className="px-5 py-3 text-right font-medium">DC 38.2</th>
+                <th scope="col" className="px-5 py-3 text-right font-medium">Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line bg-transparent">
+              {indices.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-5 py-12 text-center">
+                    <p className="text-sm font-medium text-paper">No benchmark data</p>
+                    <p className="mt-1 font-mono text-[11px] text-zinc-500">
+                      Waiting for the market gateway — try Refresh.
+                    </p>
+                  </td>
+                </tr>
+              )}
             {indices.map((idx) => {
               const isUp = idx.netChange >= 0;
 
@@ -209,15 +229,20 @@ export function OverviewTerminal({
               return (
                 <tr
                   key={idx.symbol}
-                  className="border-b border-line transition-colors hover:bg-zinc-950/60"
+                  className="transition-colors last:border-b-0 hover:bg-zinc-900/40"
                 >
                   {/* 1. Name */}
-                  <td className="py-3.5 px-4 sm:px-6 align-middle font-sans font-bold text-sm sm:text-base text-paper whitespace-nowrap">
-                    {idx.name}
+                  <td className="px-5 py-4 align-middle whitespace-nowrap">
+                    <p className="text-sm font-semibold tracking-[-0.01em] text-paper">
+                      {idx.name}
+                    </p>
+                    <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-500">
+                      {idx.symbol}
+                    </p>
                   </td>
 
                   {/* 2. Price (NO rupee symbol) */}
-                  <td className="py-3.5 px-4 sm:px-6 text-right align-middle font-mono font-bold text-base sm:text-lg text-paper whitespace-nowrap">
+                  <td className="px-5 py-4 text-right align-middle font-mono text-[15px] font-semibold text-paper whitespace-nowrap tabular">
                     {idx.lastPrice
                       ? idx.lastPrice.toLocaleString("en-IN", {
                           minimumFractionDigits: 2,
@@ -227,12 +252,12 @@ export function OverviewTerminal({
                   </td>
 
                   {/* 3. Price Change */}
-                  <td className="py-3.5 px-4 sm:px-6 text-right align-middle whitespace-nowrap">
+                  <td className="px-5 py-4 text-right align-middle whitespace-nowrap">
                     <span
-                      className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ${
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 font-mono text-[11px] font-medium tabular ${
                         isUp
-                          ? "border border-zinc-700 bg-zinc-800 text-paper"
-                          : "border border-red-900/60 bg-red-950/40 text-red-400"
+                          ? "border border-line bg-zinc-900 text-paper"
+                          : "border border-red-900/50 bg-red-950/30 text-drop"
                       }`}
                     >
                       {isUp ? "+" : ""}
@@ -242,7 +267,7 @@ export function OverviewTerminal({
                   </td>
 
                   {/* 4. AC 38.2 (NO rupee symbol) */}
-                  <td className="py-3.5 px-4 sm:px-6 text-right align-middle font-mono text-xs sm:text-sm font-semibold text-paper whitespace-nowrap">
+                  <td className="px-5 py-4 text-right align-middle font-mono text-[13px] font-medium text-zinc-300 whitespace-nowrap tabular">
                     {ac38_2.toLocaleString("en-IN", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
@@ -250,7 +275,7 @@ export function OverviewTerminal({
                   </td>
 
                   {/* 5. DC 38.2 (NO rupee symbol) */}
-                  <td className="py-3.5 px-4 sm:px-6 text-right align-middle font-mono text-xs sm:text-sm font-semibold text-paper whitespace-nowrap">
+                  <td className="px-5 py-4 text-right align-middle font-mono text-[13px] font-medium text-zinc-300 whitespace-nowrap tabular">
                     {dc38_2.toLocaleString("en-IN", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
@@ -258,7 +283,7 @@ export function OverviewTerminal({
                   </td>
 
                   {/* 6. Date */}
-                  <td className="py-3.5 px-4 sm:px-6 text-right align-middle font-mono text-xs text-zinc-400 whitespace-nowrap">
+                  <td className="px-5 py-4 text-right align-middle font-mono text-xs text-zinc-500 whitespace-nowrap tabular">
                     {refDate}
                   </td>
                 </tr>
@@ -266,22 +291,23 @@ export function OverviewTerminal({
             })}
           </tbody>
         </table>
-      </div>
+        </div>
 
-      {/* Terminal Telemetry Footer */}
-      <div className="border-t border-line bg-zinc-950/40 px-4 sm:px-6 py-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] font-mono text-zinc-500">
-          <div className="flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />
-            <span>Cash Market Trading Session: 09:15 - 15:30 IST</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <span>Cadence: 1-Minute Close Auto-Sync</span>
-            <span className="hidden sm:inline">•</span>
-            <span>Provider: Upstox v2 Market Gateway</span>
+        {/* Terminal telemetry footer — inside card */}
+        <div className="border-t border-line bg-ink/60 px-5 py-3">
+          <div className="flex flex-col gap-1.5 font-mono text-[11px] text-zinc-400 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />
+              <span>Cash session 09:15 – 15:30 IST</span>
+            </div>
+            <div className="flex items-center gap-2 tabular">
+              <span>1-min close auto-sync</span>
+              <span aria-hidden="true" className="text-zinc-600">·</span>
+              <span>Upstox v2 gateway</span>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

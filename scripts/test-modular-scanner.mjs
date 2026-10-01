@@ -2,12 +2,12 @@ import { getMarketSessionStatus } from "../lib/scanner/market-calendar.ts";
 import { getActiveAtmOptionsContracts } from "../lib/scanner/options-resolver.ts";
 import { getDailyReferenceLevel } from "../lib/scanner/daily-levels.ts";
 import { fetchBatchQuotes } from "../lib/scanner/batch-quotes.ts";
-import { evaluate5mBreakout } from "../lib/scanner/breakout-engine.ts";
+import { evaluateBreakout } from "../lib/scanner/breakout-engine.ts";
 import { sql } from "../lib/db.ts";
 
 async function runTests() {
   console.log("==================================================");
-  console.log("   5-MINUTE MODULAR SCANNER TEST SUITE");
+  console.log("   1-MINUTE MODULAR SCANNER TEST SUITE");
   console.log("==================================================");
 
   // Test 1: Market Calendar & Session Status
