@@ -56,7 +56,6 @@ export function getMarketSessionStatus(date: Date = new Date()): MarketSessionSt
 
   const sessionDate = `${year}-${month}-${day}`;
   const currentTimeIST = `${partMap.hour}:${partMap.minute}:${partMap.second}`;
-
   // Check weekday (0 = Sun, 6 = Sat in IST)
   const istDate = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
   const dayOfWeek = istDate.getDay();
@@ -113,4 +112,21 @@ export function getMarketSessionStatus(date: Date = new Date()): MarketSessionSt
     currentTimeIST,
     label: "MARKET CLOSED (OFF-SESSION)",
   };
+}
+
+/**
+ * Candle-close stamp for 1m alerts (candle-close trigger only).
+ *
+ * The 1-minute poll runs just AFTER the wall-clock minute boundary
+ * (see MarketScreenerView scheduling), so the just-closed candle's close
+ * time is the current minute floored to `:00`:
+ *   poll at 10:24:05 → evaluates closed 10:23 candle → stamps "10:24:00".
+ * A tick at 10:23:05 therefore surfaces as "10:24:00", never "10:23:05".
+ * Accepts "HH:MM:SS" or legacy "HH:MM" inputs.
+ */
+export function getCandleCloseStampIST(currentTimeIST: string): string {
+  const parts = currentTimeIST.split(":");
+  const hh = (parts[0] ?? "00").padStart(2, "0");
+  const mm = (parts[1] ?? "00").padStart(2, "0");
+  return `${hh}:${mm}:00`;
 }

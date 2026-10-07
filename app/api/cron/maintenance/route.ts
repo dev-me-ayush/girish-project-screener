@@ -1,12 +1,22 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
-import { syncDefaultOptionsWatchlist } from "@/lib/options-sync";
+import { getSessionEmail, unauthorizedResponse } from "@/lib/session";
+import { serverError } from "@/lib/api-error";
+import { isCronAuthorized } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+function istToday(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+}
+
+export async function GET(req: NextRequest) {
   try {
-    const todayStr = new Date().toISOString().split("T")[0];
+    if (!isCronAuthorized(req)) {
+      const sessionEmail = await getSessionEmail();
+      if (!sessionEmail) return unauthorizedResponse();
+    }
+    const todayStr = istToday();
 
     // 1. Find and update all expired option items
     const updated = await sql`
@@ -16,8 +26,10 @@ export async function GET() {
       RETURNING id, symbol, expiry_date;
     `;
 
-    // 2. Refresh Default Options Watchlist with new active nearest expiry
-    const optionsSync = await syncDefaultOptionsWatchlist();
+    // 2. Refresh Default Options Watchlist with new active nearest expiry.
+    // Per-user sync lives in POST /api/watchlists/default-options/sync;
+    // the unattended cron has no user context, so it only expires contracts.
+    const optionsSync = { skipped: "per-user sync via default-options/sync endpoint" };
 
     return NextResponse.json({
       status: "success",
@@ -27,11 +39,10 @@ export async function GET() {
       optionsSync,
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Maintenance failed";
-    return NextResponse.json({ status: "error", message }, { status: 500 });
+    return serverError("Maintenance failed", err);
   }
 }
 
-export async function POST() {
-  return GET();
+export async function POST(req: NextRequest) {
+  return GET(req);
 }

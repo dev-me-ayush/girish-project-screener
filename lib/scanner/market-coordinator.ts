@@ -1,5 +1,5 @@
 import { sql } from "../db";
-import { getMarketSessionStatus, MarketSessionStatus } from "./market-calendar";
+import { getMarketSessionStatus, getCandleCloseStampIST, MarketSessionStatus } from "./market-calendar";
 import { getActiveAtmOptionsContracts, ResolvedOptionContract } from "./options-resolver";
 import { getDailyReferenceLevel, preloadAllDailyReferenceLevels, triggerSessionWarmup, StockReferenceLevel } from "./daily-levels";
 import { fetchBatchQuotes, LiveMarketQuote } from "./batch-quotes";
@@ -99,6 +99,10 @@ export async function runFullMarketScan(forceRefresh: boolean = false): Promise<
   ).catch(() => {});
 
   // 6. Hydrate daily levels & breakout status concurrently
+  // Single candle-close stamp for the whole scan: every symbol in this poll
+  // shares the closed candle's close time (HH:MM:00) instead of drifting
+  // "wait timings" as the 2,732-symbol loop progresses.
+  const candleStamp = getCandleCloseStampIST(session.currentTimeIST);
   const items: UnifiedScannedInstrument[] = [];
   let upCount = 0;
   let lowCount = 0;
@@ -116,7 +120,7 @@ export async function runFullMarketScan(forceRefresh: boolean = false): Promise<
       "EQUITY",
       session.sessionDate
     );
-    const breakout = await evaluate5mBreakout(symbol, ltp, levels, session.currentTimeIST, session.isMarketOpen);
+    const breakout = await evaluate5mBreakout(symbol, ltp, levels, candleStamp, session.isMarketOpen);
 
     if (breakout.direction === "UP") upCount++;
     if (breakout.direction === "LOW") lowCount++;
@@ -145,7 +149,7 @@ export async function runFullMarketScan(forceRefresh: boolean = false): Promise<
       "OPTION",
       session.sessionDate
     );
-    const breakout = await evaluate5mBreakout(opt.symbol, ltp, levels, session.currentTimeIST, session.isMarketOpen);
+    const breakout = await evaluate5mBreakout(opt.symbol, ltp, levels, candleStamp, session.isMarketOpen);
 
     if (breakout.direction === "UP") upCount++;
     if (breakout.direction === "LOW") lowCount++;

@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runFullMarketScan } from "@/lib/scanner/market-coordinator";
+import { getSessionEmail, unauthorizedResponse } from "@/lib/session";
+import { serverError } from "@/lib/api-error";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
+    const sessionEmail = await getSessionEmail();
+    if (!sessionEmail) return unauthorizedResponse();
+
     const { searchParams } = new URL(req.url);
     const force = searchParams.get("force") === "true";
 
@@ -15,8 +20,6 @@ export async function GET(req: NextRequest) {
       ...payload,
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to run market scan";
-    console.error("Market scan error:", err);
-    return NextResponse.json({ status: "error", message }, { status: 500 });
+    return serverError("Market scan error", err);
   }
 }

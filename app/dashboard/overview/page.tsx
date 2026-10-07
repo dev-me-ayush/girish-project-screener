@@ -23,16 +23,23 @@ export default async function DashboardOverviewPage() {
   const users = await sql`
     SELECT id, email, name FROM users WHERE email = ${sessionUser} LIMIT 1
   `;
-  const user = (users[0] as {
+  if (users.length === 0) {
+    redirect("/sign-in");
+  }
+  const user = users[0] as {
     id?: string;
     email: string;
     name?: string;
-  }) || {
-    email: sessionUser,
   };
 
-  // Fetch initial benchmark quotes directly from Upstox gateway for instant SSR render
-  const initialIndices = await getHeaderIndicesQuotes();
+  // Fetch initial benchmark quotes directly from Upstox gateway for instant SSR render.
+  // Upstox outage must not 500 the whole page — fall back to client refresh.
+  let initialIndices: Awaited<ReturnType<typeof getHeaderIndicesQuotes>> = [];
+  try {
+    initialIndices = await getHeaderIndicesQuotes();
+  } catch (err) {
+    console.error("Overview SSR indices error:", err);
+  }
   const initialUpdatedAt = new Date().toISOString();
 
   return (

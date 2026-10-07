@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getMarketSessionStatus } from "@/lib/scanner/market-calendar";
 import { ensureSessionLevels } from "@/lib/scanner/daily-levels";
+import { getSessionEmail, unauthorizedResponse } from "@/lib/session";
+import { serverError } from "@/lib/api-error";
+import { isCronAuthorized } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -22,20 +25,29 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(req: NextRequest) {
   try {
+    // Expensive warmup: scheduler (CRON_SECRET bearer) or signed-in user.
+    if (!isCronAuthorized(req)) {
+      const sessionEmail = await getSessionEmail();
+      if (!sessionEmail) return unauthorizedResponse();
+    }
+
     const { searchParams } = new URL(req.url);
     const session = getMarketSessionStatus();
+    const rawLimit = Number(searchParams.get("limit") || "900");
+    const rawDelay = Number(searchParams.get("delayMs") || "1000");
     const limit = Math.min(
-      Math.max(Number(searchParams.get("limit") || "900"), 1),
+      Math.max(Number.isFinite(rawLimit) ? Math.floor(rawLimit) : 900, 1),
       2732
     );
     const delayMs = Math.min(
-      Math.max(Number(searchParams.get("delayMs") || "1000"), 0),
+      Math.max(Number.isFinite(rawDelay) ? Math.floor(rawDelay) : 1000, 0),
       5000
     );
     const symbolsParam = (searchParams.get("symbols") || "")
       .split(",")
       .map((s) => s.trim().toUpperCase())
-      .filter(Boolean);
+      .filter(Boolean)
+      .slice(0, 100);
 
     const dbStocks = (await sql`
       SELECT symbol, instrument_key
@@ -68,9 +80,7 @@ export async function GET(req: NextRequest) {
       stats,
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Session warmup failed";
-    console.error("Warm-levels cron error:", err);
-    return NextResponse.json({ status: "error", message }, { status: 500 });
+    return serverError("Session warmup failed", err);
   }
 }
 

@@ -9,6 +9,23 @@ export type SignInState = {
   error: string | null;
 };
 
+// In-memory sign-in rate limit: 5 attempts per email per 10 minutes.
+// Per-instance only; sufficient to blunt credential-stuffing on a single host.
+const signInAttempts = new Map<string, { count: number; resetAt: number }>();
+const MAX_ATTEMPTS = 5;
+const WINDOW_MS = 10 * 60 * 1000;
+
+function isRateLimited(key: string): boolean {
+  const now = Date.now();
+  const entry = signInAttempts.get(key);
+  if (!entry || now > entry.resetAt) {
+    signInAttempts.set(key, { count: 1, resetAt: now + WINDOW_MS });
+    return false;
+  }
+  entry.count += 1;
+  return entry.count > MAX_ATTEMPTS;
+}
+
 export async function signIn(
   _previous: SignInState,
   formData: FormData,
@@ -28,6 +45,10 @@ export async function signIn(
 
   try {
     const normalizedEmail = email.trim().toLowerCase();
+
+    if (isRateLimited(normalizedEmail)) {
+      return { error: "Too many attempts. Please try again later." };
+    }
 
     const users = await sql`
       SELECT id, email, password_hash FROM users WHERE email = ${normalizedEmail} LIMIT 1
@@ -57,7 +78,7 @@ export async function signIn(
     shouldRedirect = true;
   } catch (error) {
     console.error("Neon authentication error:", error);
-    return { error: "Failed to connect to Neon database. Please try again." };
+    return { error: "Something went wrong. Please try again." };
   }
 
   if (shouldRedirect) {
@@ -70,6 +91,6 @@ export async function signIn(
 
 export async function signOut() {
   const cookieStore = await cookies();
-  cookieStore.delete("session_user");
+  cookieStore.delete({ name: "session_user", path: "/" });
   redirect("/sign-in");
 }

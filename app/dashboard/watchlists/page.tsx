@@ -22,12 +22,13 @@ export default async function DashboardWatchlistsPage() {
   const users = await sql`
     SELECT id, email, name FROM users WHERE email = ${sessionUser} LIMIT 1
   `;
-  const user = (users[0] as {
+  if (users.length === 0) {
+    redirect("/sign-in");
+  }
+  const user = users[0] as {
     id?: string;
     email: string;
     name?: string;
-  }) || {
-    email: sessionUser,
   };
 
   return (

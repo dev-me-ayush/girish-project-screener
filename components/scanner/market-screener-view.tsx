@@ -58,13 +58,24 @@ export function MarketScreenerView() {
     }
 
     init();
-    const interval = setInterval(() => {
-      loadMarketData();
-    }, 60 * 1000); // 1-minute cadence
+    // Candle-close cadence: align polls to just after each wall-clock minute
+    // boundary (+7s settlement) so the LTP read approximates the just-closed
+    // 1m candle. A cross during the 10:23 candle is therefore picked up by the
+    // 10:24:0x poll and stamped 10:24:00 — never mid-candle tick time.
+    let timeout: ReturnType<typeof setTimeout>;
+    const scheduleNext = () => {
+      const now = Date.now();
+      const msToNextMinute = 60000 - (now % 60000);
+      timeout = setTimeout(() => {
+        loadMarketData();
+        scheduleNext();
+      }, msToNextMinute + 7000);
+    };
+    scheduleNext();
 
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      clearTimeout(timeout);
     };
   }, [loadMarketData]);
 

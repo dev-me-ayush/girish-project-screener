@@ -1,22 +1,28 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { runHeadlessBackgroundScan } from "@/lib/scanner";
+import { getSessionEmail, unauthorizedResponse } from "@/lib/session";
+import { serverError } from "@/lib/api-error";
+import { isCronAuthorized } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    // Expensive full scan: scheduler (CRON_SECRET bearer) or signed-in user.
+    if (!isCronAuthorized(req)) {
+      const sessionEmail = await getSessionEmail();
+      if (!sessionEmail) return unauthorizedResponse();
+    }
     const report = await runHeadlessBackgroundScan();
     return NextResponse.json({
       status: "success",
       report,
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Daemon scanner failed";
-    console.error("Daemon scan error:", err);
-    return NextResponse.json({ status: "error", message }, { status: 500 });
+    return serverError("Daemon scan error", err);
   }
 }
 
-export async function POST() {
-  return GET();
+export async function POST(req: NextRequest) {
+  return GET(req);
 }

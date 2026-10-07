@@ -22,15 +22,16 @@ export interface DefaultOptionsSyncResult {
  * Total: ~52 highly liquid contracts.
  */
 export async function syncDefaultOptionsWatchlist(
-  userEmail: string = "girishsir@my.app.com"
+  userEmail: string
 ): Promise<DefaultOptionsSyncResult> {
-  const targetEmail = userEmail || "girishsir@my.app.com";
+  const targetEmail = userEmail?.trim();
+  if (!targetEmail) throw new Error("syncDefaultOptionsWatchlist: userEmail is required");
 
   // 1. Locate or create the Default Options Watchlist
   let rows = await sql`
     SELECT id, name, updated_at
     FROM watchlists
-    WHERE name = ${DEFAULT_OPTIONS_WATCHLIST_NAME} AND (user_email = ${targetEmail} OR user_email = 'girishsir@my.app.com')
+    WHERE name = ${DEFAULT_OPTIONS_WATCHLIST_NAME} AND user_email = ${targetEmail}
     ORDER BY created_at ASC
     LIMIT 1;
   `;

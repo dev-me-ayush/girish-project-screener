@@ -16,8 +16,13 @@ if (!databaseUrl) {
 const sql = neon(databaseUrl);
 
 async function main() {
-  const email = "girishsir@my.app.com";
-  const passwordHash = hashPassword("Girish@1112");
+  const email = process.env.SEED_USER_EMAIL || "girishsir@my.app.com";
+  const password = process.env.SEED_USER_PASSWORD;
+  if (!password) {
+    console.error("SEED_USER_PASSWORD is required (refusing to seed a hardcoded password).");
+    process.exit(1);
+  }
+  const passwordHash = hashPassword(password);
 
   await sql`
     INSERT INTO users (email, password_hash, name)

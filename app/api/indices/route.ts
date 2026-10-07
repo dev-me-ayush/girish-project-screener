@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import { getHeaderIndicesQuotes } from "@/lib/upstox";
+import { getSessionEmail, unauthorizedResponse } from "@/lib/session";
+import { serverError } from "@/lib/api-error";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
+    const sessionEmail = await getSessionEmail();
+    if (!sessionEmail) return unauthorizedResponse();
+
     const indices = await getHeaderIndicesQuotes();
     return NextResponse.json({
       status: "success",
@@ -12,7 +17,6 @@ export async function GET() {
       indices,
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to fetch indices";
-    return NextResponse.json({ status: "error", message }, { status: 500 });
+    return serverError("Failed to fetch indices", err);
   }
 }

@@ -1,17 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
-import { cookies } from "next/headers";
+import { getSessionEmail, unauthorizedResponse } from "@/lib/session";
+import { serverError } from "@/lib/api-error";
 
 export const dynamic = "force-dynamic";
+
+function parseLimit(raw: string | null): number {
+  const parsed = parseInt(raw || "50", 10);
+  if (!Number.isFinite(parsed)) return 50;
+  return Math.min(100, Math.max(1, parsed));
+}
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const limit = Math.min(100, parseInt(searchParams.get("limit") || "50", 10));
+    const limit = parseLimit(searchParams.get("limit"));
 
-    const cookieStore = await cookies();
-    const sessionEmail = cookieStore.get("session_user")?.value || "girishsir@my.app.com";
-    const userEmail = searchParams.get("email") || sessionEmail;
+    const userEmail = await getSessionEmail();
+    if (!userEmail) return unauthorizedResponse();
 
     // Single default watchlist: user_pinned_symbols only (pinned from All Stocks).
     // Legacy multi-watchlist tables (watchlists / watchlist_items) are retired
@@ -72,7 +78,6 @@ export async function GET(req: NextRequest) {
       alerts,
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to load alerts";
-    return NextResponse.json({ status: "error", message }, { status: 500 });
+    return serverError("Load alerts error", err);
   }
 }

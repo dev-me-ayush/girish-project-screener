@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Logo, Wordmark } from "@/components/logo";
 import { SignInForm } from "@/components/sign-in-form";
+import { sql } from "@/lib/db";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -17,7 +18,12 @@ export default async function SignInPage() {
   const sessionUser = cookieStore.get("session_user")?.value;
 
   if (sessionUser) {
-    redirect("/dashboard/overview");
+    const users = await sql`
+      SELECT id FROM users WHERE email = ${sessionUser} LIMIT 1
+    `;
+    if (users.length > 0) {
+      redirect("/dashboard/overview");
+    }
   }
   return (
     <div className="relative flex min-h-dvh flex-col bg-ink text-paper">
@@ -47,21 +53,8 @@ export default async function SignInPage() {
               </div>
 
               <p className="mt-8 border-t border-line pt-6 text-xs leading-relaxed text-faint">
-                Signing in means you accept our{" "}
-                <Link
-                  href="#"
-                  className="text-muted underline underline-offset-4 transition-colors hover:text-paper"
-                >
-                  Terms
-                </Link>{" "}
-                and{" "}
-                <Link
-                  href="#"
-                  className="text-muted underline underline-offset-4 transition-colors hover:text-paper"
-                >
-                  Privacy Policy
-                </Link>
-                .
+                By signing in you agree to use this research tool responsibly.
+                Nothing here is investment advice.
               </p>
             </div>
           </div>

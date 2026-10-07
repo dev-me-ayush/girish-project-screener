@@ -58,7 +58,16 @@ function numOrBlank(v: number | undefined): number | null {
   return typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.round(v * 100) / 100 : null;
 }
 
+function finiteOrNull(v: unknown): number | null {
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? Math.round(n * 100) / 100 : null;
+}
+
 function saveBytes(bytes: Uint8Array, fileName: string): void {
+  if (typeof document === "undefined" || typeof URL === "undefined") {
+    console.warn("Export skipped: downloads require a browser environment.");
+    return;
+  }
   const blob = new Blob([new Uint8Array(bytes)], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
@@ -83,7 +92,7 @@ export function exportInstrumentsToExcel(
   categoryLabel: string = "All"
 ): void {
   if (!instruments || instruments.length === 0) {
-    alert("No instruments available to export.");
+    console.warn("Export skipped: no instruments available to export.");
     return;
   }
 
@@ -115,7 +124,9 @@ export function exportInstrumentsToExcel(
       (isOption && "option_type" in inst && typeof inst.option_type === "string" ? inst.option_type : "") || "",
       ("expiry" in inst && typeof inst.expiry === "string" ? inst.expiry : "") || "",
       numOrBlank(inst.ltp),
-      inst.net_change !== 0 ? Math.round(inst.net_change * 100) / 100 : null,
+      typeof inst.net_change === "number" && Number.isFinite(inst.net_change) && inst.net_change !== 0
+        ? Math.round(inst.net_change * 100) / 100
+        : null,
       numOrBlank(pdh),
       numOrBlank(pdl),
       numOrBlank(pdc),
@@ -165,7 +176,7 @@ export interface ExportableAlert {
 
 export function exportAlertsToExcel(alerts: ExportableAlert[]): void {
   if (!alerts || alerts.length === 0) {
-    alert("No alerts to export.");
+    console.warn("Export skipped: no alerts to export.");
     return;
   }
 
@@ -175,9 +186,9 @@ export function exportAlertsToExcel(alerts: ExportableAlert[]): void {
     a.timeframe || "1m",
     a.direction,
     a.breach_count || 1,
-    Math.round(Number(a.trigger_price) * 100) / 100,
+    finiteOrNull(a.trigger_price),
     a.level_name,
-    Math.round(Number(a.level_price) * 100) / 100,
+    finiteOrNull(a.level_price),
     a.breakout_time || "--",
     a.session_date ? String(a.session_date).slice(0, 10) : "--",
   ]);

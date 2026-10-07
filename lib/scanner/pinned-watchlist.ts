@@ -11,9 +11,10 @@ export interface PinnedSymbolRecord {
  * Fetches all pinned symbols for a user (single personal watchlist)
  */
 export async function getUserPinnedSymbols(
-  userEmail: string = "girishsir@my.app.com"
+  userEmail: string
 ): Promise<PinnedSymbolRecord[]> {
-  const targetEmail = userEmail || "girishsir@my.app.com";
+  const targetEmail = userEmail?.trim();
+  if (!targetEmail) throw new Error("getUserPinnedSymbols: userEmail is required");
   try {
     const rows = await sql`
       SELECT symbol, instrument_key, instrument_type, created_at
@@ -40,9 +41,10 @@ export async function togglePinnedSymbol(
   symbol: string,
   instrumentKey: string,
   instrumentType: "EQUITY" | "OPTION" = "EQUITY",
-  userEmail: string = "girishsir@my.app.com"
+  userEmail: string
 ): Promise<{ isPinned: boolean; symbol: string }> {
-  const targetEmail = userEmail || "girishsir@my.app.com";
+  const targetEmail = userEmail?.trim();
+  if (!targetEmail) throw new Error("togglePinnedSymbol: userEmail is required");
 
   // Check if already pinned
   const existing = await sql`

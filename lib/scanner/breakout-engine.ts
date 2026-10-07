@@ -1,5 +1,6 @@
 import { sql } from "../db";
 import { StockReferenceLevel } from "./daily-levels";
+import { getCandleCloseStampIST } from "./market-calendar";
 
 export type BreakoutDirection = "UP" | "LOW" | "INSIDE";
 
@@ -73,8 +74,15 @@ export async function flushPendingAlerts(): Promise<void> {
 }
 
 /**
- * Evaluates whether an instrument has broken above AC 38.2% or below DC 38.2% on a 1m interval,
- * tracking state transitions, breach counts, and inserting lean alerts into Neon Postgres.
+ * Candle-close breakout evaluation on the 1m interval (candle-close trigger ONLY).
+ *
+ * Each 1-minute poll runs just after the wall-clock minute boundary and the
+ * poll LTP is treated as the just-closed candle's close. The alert is stamped
+ * with the candle CLOSE time (`HH:MM:00`, floored from poll time), never the
+ * intra-minute tick/wait time — e.g. a cross during the 10:23 candle surfaces
+ * as "10:24:00". At most one alert fires per candle per symbol, so repeated
+ * polls inside the same minute cannot double-alert, while crosses in different
+ * candles each produce their own alert.
  */
 export async function evaluateBreakout(
   symbol: string,
@@ -84,6 +92,9 @@ export async function evaluateBreakout(
   isLiveMarket: boolean = true
 ): Promise<BreakoutEvaluationResult> {
   const { ac38_2, dc38_2, session_date, instrument_key, instrument_type } = levels;
+  // Candle-close trigger: normalize poll/wait time to the closed candle's
+  // close stamp (HH:MM:00). All state + persisted alerts use this stamp.
+  const candleStamp = getCandleCloseStampIST(currentTimeIST);
   let state = memoryState.get(symbol);
 
   // Reset state if session date rolled over
@@ -136,15 +147,19 @@ export async function evaluateBreakout(
 
   const isFreshCrossing = isLiveMarket && newDirection !== "INSIDE" && state.currentDirection !== newDirection;
 
-  if (isFreshCrossing) {
+  // Candle-close dedup: at most one alert per closed candle per symbol.
+  // A repeat poll inside the same minute (same candleStamp) never re-fires,
+  // while a cross in a later candle fires normally (each occurrence logged).
+  const alreadyAlertedThisCandle = state.breachTimes.includes(candleStamp);
+  const shouldAlert = isFreshCrossing && !alreadyAlertedThisCandle;
+
+  if (shouldAlert) {
     state.breachCount += 1;
     if (!state.firstBreachTime) {
-      state.firstBreachTime = currentTimeIST;
+      state.firstBreachTime = candleStamp;
     }
-    state.latestBreachTime = currentTimeIST;
-    if (!state.breachTimes.includes(currentTimeIST)) {
-      state.breachTimes.push(currentTimeIST);
-    }
+    state.latestBreachTime = candleStamp;
+    state.breachTimes.push(candleStamp);
     state.currentDirection = newDirection;
 
     // Buffer alert into memory queue for batched ingestion as distinct event
@@ -159,11 +174,15 @@ export async function evaluateBreakout(
       direction: directionLabel,
       breach_count: state.breachCount,
       session_date,
-      breakout_time: currentTimeIST,
+      breakout_time: candleStamp,
     });
   } else if (isLiveMarket && newDirection === "INSIDE" && state.currentDirection !== "INSIDE") {
     // Pullback inside range: update state to INSIDE but preserve prior breach counts & times
     state.currentDirection = "INSIDE";
+  } else if (isLiveMarket && newDirection !== "INSIDE" && state.currentDirection !== newDirection) {
+    // Same-candle repeat (tick re-poll): track the latest side for display
+    // without logging a duplicate alert for the same closed candle.
+    state.currentDirection = newDirection;
   }
 
   return {
@@ -177,7 +196,7 @@ export async function evaluateBreakout(
     firstBreachTime: isLiveMarket ? state.firstBreachTime : null,
     latestBreachTime: isLiveMarket ? state.latestBreachTime : null,
     breachTimes: isLiveMarket ? [...state.breachTimes] : [],
-    isFreshCrossing,
+    isFreshCrossing: shouldAlert,
   };
 }
 

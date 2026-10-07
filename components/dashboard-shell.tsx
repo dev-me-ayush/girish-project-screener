@@ -48,7 +48,7 @@ const DASHBOARD_TABS = [
   },
 ];
 
-export function DashboardShell({ children }: DashboardShellProps) {
+export function DashboardShell({ user, children }: DashboardShellProps) {
   const pathname = usePathname();
 
   return (
@@ -94,8 +94,14 @@ export function DashboardShell({ children }: DashboardShellProps) {
           })}
         </nav>
 
-        {/* Right: icon-only logout */}
-        <div className="flex shrink-0 items-center">
+        {/* Right: account + logout */}
+        <div className="flex shrink-0 items-center gap-2">
+          <span
+            title={user.email}
+            className="hidden max-w-44 truncate font-mono text-[11px] text-zinc-500 md:block"
+          >
+            {user.email}
+          </span>
           <form action={signOut}>
             <button
               type="submit"

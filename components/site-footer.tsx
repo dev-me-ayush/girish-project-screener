@@ -28,12 +28,9 @@ export function SiteFooter() {
                 <ul className="mt-4 space-y-2.5">
                   {column.links.map((link) => (
                     <li key={link}>
-                      <Link
-                        href="#"
-                        className="text-sm text-muted transition-colors hover:text-paper"
-                      >
+                      <span className="text-sm text-muted">
                         {link}
-                      </Link>
+                      </span>
                     </li>
                   ))}
                 </ul>

@@ -285,13 +285,14 @@ export async function runWatchlistScan(
       try {
         await sql`
           INSERT INTO scanner_alerts (
-            watchlist_id, symbol, instrument_key, timeframe, level_type,
+            watchlist_id, symbol, instrument_key, timeframe, level_name, level_type,
             level_price, trigger_price, direction, open_interest, triggered_at
           ) VALUES (
             ${watchlistId}, ${item.symbol}, ${item.instrument_key}, ${mappedTf},
-            ${crossover.crossoverType}, ${crossover.levelPrice}, ${crossover.triggerPrice},
+            ${crossover.crossoverType}, ${crossover.crossoverType}, ${crossover.levelPrice}, ${crossover.triggerPrice},
             ${direction}, ${quote.oi}, ${crossover.timestamp}
-          );
+          )
+          ON CONFLICT DO NOTHING;
         `;
       } catch (dbErr) {
         console.error("Failed to insert alert:", dbErr);

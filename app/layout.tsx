@@ -44,25 +44,25 @@ const tiro = Tiro_Devanagari_Hindi({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://tessera.example"),
+  metadataBase: new URL("https://eizeujhpgz.ap-south-1.awsapprunner.com"),
   title: {
-    default: "Tessera — the stock scanner for people who read tickers",
-    template: "%s · Tessera",
+    default: "Girish Screener — 1-minute NSE Fibonacci AC/DC breakout scanner",
+    template: "%s · Girish Screener",
   },
   description:
-    "Screen 9,400+ US equities in under 400ms. Build reusable presets, layer on fundamentals and sentiment, and get alerts the moment a setup prints.",
+    "Live 1-minute NSE equity and index-options scanner on Fibonacci AC/DC 38.2% breakout levels, in rupees, in IST.",
   openGraph: {
     type: "website",
-    siteName: "Tessera",
-    title: "Tessera — the stock scanner for people who read tickers",
+    siteName: "Girish Screener",
+    title: "Girish Screener — 1-minute NSE Fibonacci AC/DC breakout scanner",
     description:
-      "Screen 9,400+ US equities in under 400ms. Build reusable presets, layer on fundamentals and sentiment, and get alerts the moment a setup prints.",
+      "Live 1-minute NSE equity and index-options scanner on Fibonacci AC/DC 38.2% breakout levels, in rupees, in IST.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Tessera — the stock scanner for people who read tickers",
+    title: "Girish Screener — 1-minute NSE Fibonacci AC/DC breakout scanner",
     description:
-      "Screen 9,400+ US equities in under 400ms. Build reusable presets, layer on fundamentals and sentiment, and get alerts the moment a setup prints.",
+      "Live 1-minute NSE equity and index-options scanner on Fibonacci AC/DC 38.2% breakout levels, in rupees, in IST.",
   },
 };
 

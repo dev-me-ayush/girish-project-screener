@@ -130,7 +130,9 @@ export interface SheetSpec {
 }
 
 function esc(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  // Strip control chars illegal in XML 1.0, then escape markup.
+  const cleaned = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
+  return cleaned.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 function colLetter(i: number): string {
@@ -185,7 +187,10 @@ function sheetXml(spec: SheetSpec): string {
   const renderCell = (r: number, c: number, v: CellValue, style: number): string => {
     const ref = `${colLetter(c)}${r}`;
     if (v === null || v === undefined || v === "") return `<c r="${ref}" s="${style}"/>`;
-    if (typeof v === "number") return `<c r="${ref}" s="${style}"><v>${v}</v></c>`;
+    if (typeof v === "number") {
+      if (!Number.isFinite(v)) return `<c r="${ref}" s="${style}"/>`;
+      return `<c r="${ref}" s="${style}"><v>${v}</v></c>`;
+    }
     return `<c r="${ref}" s="${style}" t="inlineStr"><is><t>${esc(v)}</t></is></c>`;
   };
 

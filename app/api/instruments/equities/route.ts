@@ -1,16 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { getSessionEmail, unauthorizedResponse } from "@/lib/session";
+import { serverError } from "@/lib/api-error";
 
 export const dynamic = "force-dynamic";
 
+function escapeLike(s: string): string {
+  return s.replace(/[\\%_]/g, (m) => `\\${m}`);
+}
+
 export async function GET(req: NextRequest) {
   try {
+    const sessionEmail = await getSessionEmail();
+    if (!sessionEmail) return unauthorizedResponse();
+
     const { searchParams } = new URL(req.url);
-    const query = (searchParams.get("q") || "").trim();
+    const query = (searchParams.get("q") || "").trim().slice(0, 50);
 
     let items;
     if (query) {
-      const searchPattern = `%${query}%`;
+      const searchPattern = `%${escapeLike(query)}%`;
       items = await sql`
         WITH combined AS (
           SELECT 
@@ -20,9 +29,9 @@ export async function GET(req: NextRequest) {
             COALESCE(sector, 'Equity') as sector,
             1 as priority
           FROM stocks
-          WHERE symbol ILIKE ${searchPattern}
-             OR name ILIKE ${searchPattern}
-             OR sector ILIKE ${searchPattern}
+          WHERE symbol ILIKE ${searchPattern} ESCAPE '\'
+             OR name ILIKE ${searchPattern} ESCAPE '\'
+             OR sector ILIKE ${searchPattern} ESCAPE '\'
           
           UNION ALL
 
@@ -35,10 +44,10 @@ export async function GET(req: NextRequest) {
           FROM watchlist_items
           WHERE is_active = true
             AND (
-              symbol ILIKE ${searchPattern}
-              OR COALESCE(instrument_type, '') ILIKE ${searchPattern}
-              OR COALESCE(option_type, '') ILIKE ${searchPattern}
-              OR CAST(strike_price AS TEXT) ILIKE ${searchPattern}
+              symbol ILIKE ${searchPattern} ESCAPE '\'
+              OR COALESCE(instrument_type, '') ILIKE ${searchPattern} ESCAPE '\'
+              OR COALESCE(option_type, '') ILIKE ${searchPattern} ESCAPE '\'
+              OR CAST(strike_price AS TEXT) ILIKE ${searchPattern} ESCAPE '\'
             )
         )
         SELECT symbol, name, instrument_key, sector
@@ -89,7 +98,6 @@ export async function GET(req: NextRequest) {
       equities: items,
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to query instruments from database";
-    return NextResponse.json({ status: "error", message }, { status: 500 });
+    return serverError("Query instruments error", err);
   }
 }

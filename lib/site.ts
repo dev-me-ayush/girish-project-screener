@@ -299,6 +299,6 @@
       },
     ],
     disclaimer:
-      "Tessera ek research tool hai, SEBI-registered investment advisor ya broker-dealer nahi. Is website par koi bhi jaankari investment advice nahi hai. Research Analyst registration no. INH0000XXXXXX (placeholder). Market data informational purposes ke liye aur delayed ho sakta hai. F&O mein losses ho sakte hain. Investing mein risk hai, aur aapka principal poora ho sakta hai.",
+      "This is a research tool, not a SEBI-registered investment advisor or broker-dealer. Nothing here is investment advice. Market data is informational and may be delayed. F&O trading involves risk of loss.",
   },
 };
