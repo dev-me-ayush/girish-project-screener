@@ -1,7 +1,7 @@
 import { sql } from "../db";
 import { getMarketSessionStatus, MarketSessionStatus } from "./market-calendar";
 import { getActiveAtmOptionsContracts, ResolvedOptionContract } from "./options-resolver";
-import { getDailyReferenceLevel, preloadAllDailyReferenceLevels, StockReferenceLevel } from "./daily-levels";
+import { getDailyReferenceLevel, preloadAllDailyReferenceLevels, triggerSessionWarmup, StockReferenceLevel } from "./daily-levels";
 import { fetchBatchQuotes, LiveMarketQuote } from "./batch-quotes";
 import { evaluate5mBreakout, flushPendingAlerts, BreakoutEvaluationResult } from "./breakout-engine";
 
@@ -78,6 +78,26 @@ export async function runFullMarketScan(forceRefresh: boolean = false): Promise<
   // 5. Pre-load all session daily reference levels into memory cache in 1 single bulk query
   await preloadAllDailyReferenceLevels(session.sessionDate);
 
+  // 5b. Background warmup for symbols still missing stored previous-session
+  // levels (single-flight per session, ~1 req/s paced, never awaited so the
+  // 1-minute scan stays fast). Reads must NEVER use live quotes as PDH/PDC.
+  void triggerSessionWarmup(
+    session.sessionDate,
+    [
+      ...dbStocks.map((s) => ({
+        symbol: s.symbol as string,
+        instrument_key: s.instrument_key as string,
+        instrument_type: "EQUITY" as const,
+      })),
+      ...optionsContracts.map((o) => ({
+        symbol: o.symbol,
+        instrument_key: o.instrument_key,
+        instrument_type: "OPTION" as const,
+      })),
+    ],
+    { delayMs: 1100 }
+  ).catch(() => {});
+
   // 6. Hydrate daily levels & breakout status concurrently
   const items: UnifiedScannedInstrument[] = [];
   let upCount = 0;
@@ -94,9 +114,7 @@ export async function runFullMarketScan(forceRefresh: boolean = false): Promise<
       symbol,
       key,
       "EQUITY",
-      session.sessionDate,
-      q ? { high: q.high, low: q.low, close: q.close } : undefined,
-      false
+      session.sessionDate
     );
     const breakout = await evaluate5mBreakout(symbol, ltp, levels, session.currentTimeIST, session.isMarketOpen);
 
@@ -125,9 +143,7 @@ export async function runFullMarketScan(forceRefresh: boolean = false): Promise<
       opt.symbol,
       opt.instrument_key,
       "OPTION",
-      session.sessionDate,
-      q ? { high: q.high, low: q.low, close: q.close } : undefined,
-      false
+      session.sessionDate
     );
     const breakout = await evaluate5mBreakout(opt.symbol, ltp, levels, session.currentTimeIST, session.isMarketOpen);
 

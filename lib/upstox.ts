@@ -92,7 +92,15 @@ export async function getHeaderIndicesQuotes(): Promise<IndexQuote[]> {
     const json = await res.json();
     const data = json.data || {};
 
-    return SUPPORTED_INDICES.map((idx) => {
+    // Fibonacci levels must anchor to the previous COMPLETED session, not
+    // today's in-progress OHLC (same contract as the equity screener).
+    const prevRanges = await Promise.all(
+      SUPPORTED_INDICES.map((idx) =>
+        getPreviousDayRange(idx.instrumentKey).catch(() => null)
+      )
+    );
+
+    return SUPPORTED_INDICES.map((idx, i) => {
       const formattedKey = idx.instrumentKey.replace("|", ":");
       const quote = data[formattedKey] || {};
       const ohlc = quote.ohlc || {};
@@ -100,10 +108,9 @@ export async function getHeaderIndicesQuotes(): Promise<IndexQuote[]> {
       const prevClose = ohlc.close || lastPrice;
       const netChange = Number((lastPrice - (ohlc.open || lastPrice)).toFixed(2));
       const percentageChange = prevClose ? Number(((netChange / prevClose) * 100).toFixed(2)) : 0;
-      const high = ohlc.high || lastPrice;
-      const low = ohlc.low || lastPrice;
-      const close = ohlc.close || lastPrice;
-      const fibLevels = high > 0 && low > 0 ? calculateFibLevels(high, low, close) : undefined;
+      const prevRange = prevRanges[i];
+      const fibLevels =
+        prevRange && prevRange.range > 0 ? prevRange : undefined;
 
       const refDate = new Date();
       refDate.setDate(refDate.getDate() - 1);
@@ -178,7 +185,15 @@ async function fetchUpstoxWithRetry(url: string, maxRetries = 2): Promise<Respon
 }
 
 /**
- * Fetch Previous Day High (PDH), Low (PDL), Close (PDC)
+ * Fetch Previous Day High (PDH), Low (PDL), Close (PDC) from the last
+ * COMPLETED daily session.
+ *
+ * Upstox returns daily candles newest-first as
+ * [timestamp, open, high, low, close, volume, oi] with IST timestamps
+ * (e.g. "2026-10-06T00:00:00+05:30"). Index 0 after filtering out any
+ * in-progress candle for the current IST date is therefore the previous
+ * trading session (weekends/holidays have no candle, so the filter is a
+ * no-op and index 0 is still the last completed session).
  */
 export async function getPreviousDayRange(instrumentKey: string): Promise<FibLevels> {
   const normKey = instrumentKey.replace(":", "|");
@@ -193,8 +208,10 @@ export async function getPreviousDayRange(instrumentKey: string): Promise<FibLev
   }
 
   try {
-    const today = new Date().toISOString().split("T")[0];
-    const fromDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    // IST-based window: UTC dates shift a day during 00:00-05:30 IST and
+    // would otherwise request a stale to_date from the API.
+    const today = todayIST;
+    const fromDate = new Date(istDate.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     const url = `${UPSTOX_BASE_URL}/historical-candle/${encodeURIComponent(instrumentKey)}/day/${today}/${fromDate}`;
     const res = await fetchUpstoxWithRetry(url);
     if (!res.ok) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, useSyncExternalStore } from "react";
 import { IndexQuote } from "@/lib/upstox";
-import { calculateFibLevels, FibLevels } from "@/lib/fibonacci";
+import { FibLevels } from "@/lib/fibonacci";
 import { RefreshIcon } from "@/components/icons";
 
 const emptySubscribe = () => () => {};
@@ -210,20 +210,13 @@ export function OverviewTerminal({
             {indices.map((idx) => {
               const isUp = idx.netChange >= 0;
 
-              const high = idx.high || idx.lastPrice;
-              const low = idx.low || idx.lastPrice;
-              const close = idx.close || idx.lastPrice;
+              // AC/DC must anchor to the previous completed session (server
+              // fibLevels). Never derive them from today's live OHLC: with no
+              // grounded levels, render "--" instead of wrong numbers.
+              const fib: FibLevels | undefined = idx.fibLevels;
 
-              const fib: FibLevels =
-                idx.fibLevels ||
-                calculateFibLevels(
-                  high > 0 ? high : idx.lastPrice,
-                  low > 0 ? low : idx.lastPrice,
-                  close > 0 ? close : idx.lastPrice
-                );
-
-              const ac38_2 = fib.ac38_2;
-              const dc38_2 = fib.dc38_2;
+              const ac38_2 = fib?.ac38_2;
+              const dc38_2 = fib?.dc38_2;
               const refDate = idx.referenceDate || getFallbackReferenceDate();
 
               return (
@@ -268,18 +261,22 @@ export function OverviewTerminal({
 
                   {/* 4. AC 38.2 (NO rupee symbol) */}
                   <td className="px-5 py-4 text-right align-middle font-mono text-[13px] font-medium text-zinc-300 whitespace-nowrap tabular">
-                    {ac38_2.toLocaleString("en-IN", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
+                    {typeof ac38_2 === "number" && ac38_2 > 0
+                      ? ac38_2.toLocaleString("en-IN", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })
+                      : "--"}
                   </td>
 
                   {/* 5. DC 38.2 (NO rupee symbol) */}
                   <td className="px-5 py-4 text-right align-middle font-mono text-[13px] font-medium text-zinc-300 whitespace-nowrap tabular">
-                    {dc38_2.toLocaleString("en-IN", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
+                    {typeof dc38_2 === "number" && dc38_2 > 0
+                      ? dc38_2.toLocaleString("en-IN", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })
+                      : "--"}
                   </td>
 
                   {/* 6. Date */}

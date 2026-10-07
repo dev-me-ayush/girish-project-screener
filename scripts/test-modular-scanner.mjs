@@ -2,7 +2,7 @@ import { getMarketSessionStatus } from "../lib/scanner/market-calendar.ts";
 import { getActiveAtmOptionsContracts } from "../lib/scanner/options-resolver.ts";
 import { getDailyReferenceLevel } from "../lib/scanner/daily-levels.ts";
 import { fetchBatchQuotes } from "../lib/scanner/batch-quotes.ts";
-import { evaluateBreakout } from "../lib/scanner/breakout-engine.ts";
+import { evaluateBreakout, evaluate5mBreakout } from "../lib/scanner/breakout-engine.ts";
 import { sql } from "../lib/db.ts";
 
 async function runTests() {
