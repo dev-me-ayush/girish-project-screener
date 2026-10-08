@@ -174,3 +174,89 @@ describe("5. End-to-End Real Data Scenarios: Momentum Delta & Reversal Signal", 
     assert.ok(deltaReversal > 0, "Positive delta triggers bullish momentum indicator");
   });
 });
+
+describe("6. Export Features: CSV & Excel Generator Integrity", () => {
+  const mockRows = [
+    {
+      time: "14:15",
+      strikes: [
+        { strike: 22300, callOIChange: 3243825, putOIChange: 1718145 },
+        { strike: 22350, callOIChange: 3353610, putOIChange: 1718665 },
+        { strike: 22400, callOIChange: 6802575, putOIChange: 1344460 },
+      ],
+      totalCallOIChange: 13400010,
+      totalPutOIChange: 4781270,
+      difference: -8618740,
+      changeDiff: 164255,
+      revSignal: true,
+    },
+    {
+      time: "14:12",
+      strikes: [
+        { strike: 22300, callOIChange: 2938455, putOIChange: 1674530 },
+        { strike: 22350, callOIChange: 3198195, putOIChange: 1511640 },
+        { strike: 22400, callOIChange: 6707545, putOIChange: 1027910 },
+      ],
+      totalCallOIChange: 12844195,
+      totalPutOIChange: 4214080,
+      difference: -8630115,
+      changeDiff: -859560,
+      revSignal: false,
+    },
+  ];
+
+  const meta = {
+    indexName: "NIFTY 50",
+    expiry: "2026-10-13",
+    intervalMinutes: 3,
+    activeStrikes: [22300, 22350, 22400],
+  };
+
+  test("generateHistoryCSV produces valid comma-separated text with correct columns and headers", async () => {
+    const { generateHistoryCSV } = await import("../lib/options-export.ts");
+    const csv = generateHistoryCSV(mockRows, meta);
+
+    assert.ok(typeof csv === "string", "CSV must return a string");
+    assert.ok(csv.includes("Index,NIFTY 50,Expiry,2026-10-13,Interval,3 Minutes"));
+    assert.ok(csv.includes("Time,22300 CALL,22300 PUT,22350 CALL,22350 PUT,22400 CALL,22400 PUT"));
+    assert.ok(csv.includes("14:15,3243825,1718145,3353610,1718665,6802575,1344460,13400010,4781270,-8618740,164255,REVERSAL"));
+    assert.ok(csv.includes("14:12,2938455,1674530,3198195,1511640,6707545,1027910,12844195,4214080,-8630115,-859560,-"));
+  });
+
+  test("createHistoryExcelWorkbook builds styled multi-sheet workbook with formatting and colors", async () => {
+    const { createHistoryExcelWorkbook } = await import("../lib/options-export.ts");
+    const wb = await createHistoryExcelWorkbook(mockRows, meta);
+
+    assert.ok(wb, "Workbook must be created");
+    const ws = wb.getWorksheet("OI Analysis");
+    assert.ok(ws, "Worksheet 'OI Analysis' must exist");
+
+    // Title & Metadata
+    assert.equal(ws.getCell("A1").value, "NIFTY 50 - Three Strike Range Change in OI Analysis");
+    assert.ok(String(ws.getCell("A2").value).includes("Expiry: 2026-10-13"));
+
+    // Header cells & strike titles
+    assert.equal(ws.getCell("A4").value, "Time");
+    assert.equal(ws.getCell("B4").value, "22300");
+    assert.equal(ws.getCell("D4").value, "22350");
+    assert.equal(ws.getCell("F4").value, "22400");
+    assert.equal(ws.getCell("B5").value, "CALL");
+    assert.equal(ws.getCell("C5").value, "PUT");
+
+    // Data row 1 checks
+    const row6 = ws.getRow(6);
+    assert.equal(row6.getCell(1).value, "14:15");
+    assert.equal(row6.getCell(2).value, 3243825); // S1 Call
+    assert.equal(row6.getCell(3).value, 1718145); // S1 Put
+    assert.equal(row6.getCell(8).value, 13400010); // Total Call
+    assert.equal(row6.getCell(9).value, 4781270);  // Total Put
+    assert.equal(row6.getCell(10).value, -8618740); // Diff
+    assert.equal(row6.getCell(11).value, 164255);   // Delta
+    assert.equal(row6.getCell(12).value, "REVERSAL");
+
+    // Check buffer export ability
+    const buffer = await wb.xlsx.writeBuffer();
+    assert.ok(buffer.byteLength > 1000, "Excel binary buffer must be valid and non-empty");
+  });
+});
+

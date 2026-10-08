@@ -2,6 +2,12 @@
 
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { INDICES_CONFIG, formatIndianNumber, getPresetStrikes } from "@/lib/options-service";
+import {
+  generateHistoryCSV,
+  createHistoryExcelWorkbook,
+  downloadCSVFile,
+  downloadExcelFile,
+} from "@/lib/options-export";
 
 interface IndexQuote {
   ltp: number;
@@ -50,6 +56,8 @@ export function OptionsDashboardView() {
   const [loading, setLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<string>("");
+  const [historyRefreshedAt, setHistoryRefreshedAt] = useState<string>("");
+  const [isExporting, setIsExporting] = useState<"csv" | "excel" | null>(null);
   const [indicesQuotes, setIndicesQuotes] = useState<Record<string, IndexQuote>>({});
   const [atmStrike, setAtmStrike] = useState<number>(0);
   const [pcr, setPcr] = useState<number>(0);
@@ -111,8 +119,11 @@ export function OptionsDashboardView() {
     };
   }, [fetchChain]);
 
-  // Fetch History whenever active strikes or interval changes
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+
+  // Fetch History whenever active strikes, chain, interval, or refresh key changes
   useEffect(() => {
+    let ignore = false;
     if (!activeStrikes[0] || chain.length === 0) return;
 
     const strikesPayload = activeStrikes.map((s) => {
@@ -128,7 +139,7 @@ export function OptionsDashboardView() {
 
     if (strikesPayload.some((s) => !s.ceKey || !s.peKey)) return;
 
-    async function fetchHistory() {
+    async function loadHistory() {
       try {
         setHistoryLoading(true);
         const res = await fetch("/api/options/history", {
@@ -140,18 +151,72 @@ export function OptionsDashboardView() {
           }),
         });
         const d = await res.json();
-        if (d.success) {
+        if (!ignore && d.success) {
           setHistoryRows(d.rows || []);
+          setHistoryRefreshedAt(new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" }));
         }
       } catch (e) {
-        console.error("Failed to fetch options history:", e);
+        if (!ignore) {
+          console.error("Failed to fetch options history:", e);
+        }
       } finally {
-        setHistoryLoading(false);
+        if (!ignore) {
+          setHistoryLoading(false);
+        }
       }
     }
 
-    fetchHistory();
-  }, [activeStrikes, chain, intervalMinutes]);
+    loadHistory();
+
+    return () => {
+      ignore = true;
+    };
+  }, [activeStrikes, chain, intervalMinutes, historyRefreshKey]);
+
+  const handleManualRefreshHistory = useCallback(() => {
+    setHistoryRefreshKey((prev) => prev + 1);
+  }, []);
+
+  // Download handlers
+  const handleDownloadCSV = useCallback(() => {
+    if (historyRows.length === 0) return;
+    try {
+      setIsExporting("csv");
+      const csvStr = generateHistoryCSV(historyRows, {
+        indexName: selectedIndexConfig.name,
+        expiry: selectedExpiry,
+        intervalMinutes,
+        activeStrikes,
+      });
+      const safeIndex = selectedIndexConfig.name.replace(/\s+/g, "_");
+      const filename = `${safeIndex}_Three_Strike_OI_${selectedExpiry}_${intervalMinutes}m.csv`;
+      downloadCSVFile(csvStr, filename);
+    } catch (err) {
+      console.error("CSV download error:", err);
+    } finally {
+      setIsExporting(null);
+    }
+  }, [historyRows, selectedIndexConfig.name, selectedExpiry, intervalMinutes, activeStrikes]);
+
+  const handleDownloadExcel = useCallback(async () => {
+    if (historyRows.length === 0) return;
+    try {
+      setIsExporting("excel");
+      const wb = await createHistoryExcelWorkbook(historyRows, {
+        indexName: selectedIndexConfig.name,
+        expiry: selectedExpiry,
+        intervalMinutes,
+        activeStrikes,
+      });
+      const safeIndex = selectedIndexConfig.name.replace(/\s+/g, "_");
+      const filename = `${safeIndex}_Three_Strike_OI_${selectedExpiry}_${intervalMinutes}m.xlsx`;
+      await downloadExcelFile(wb, filename);
+    } catch (err) {
+      console.error("Excel download error:", err);
+    } finally {
+      setIsExporting(null);
+    }
+  }, [historyRows, selectedIndexConfig.name, selectedExpiry, intervalMinutes, activeStrikes]);
 
   // Selected 3 strikes summary data
   const selectedStrikesData = useMemo(() => {
@@ -546,18 +611,82 @@ export function OptionsDashboardView() {
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase text-slate-500">Interval:</span>
-              <select
-                value={intervalMinutes}
-                onChange={(e) => setIntervalMinutes(Number(e.target.value))}
-                className="rounded px-3 py-1 text-xs font-semibold focus:outline-none border bg-slate-100 border-slate-300 text-slate-900"
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Interval Selector */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold uppercase text-slate-500">Interval:</span>
+                <select
+                  value={intervalMinutes}
+                  onChange={(e) => setIntervalMinutes(Number(e.target.value))}
+                  className="rounded px-2.5 py-1 text-xs font-semibold focus:outline-none border bg-slate-100 border-slate-300 text-slate-900"
+                >
+                  <option value={1}>1 Minute</option>
+                  <option value={3}>3 Minutes</option>
+                  <option value={5}>5 Minutes</option>
+                  <option value={15}>15 Minutes</option>
+                </select>
+              </div>
+
+              {/* Section-Specific Refresh Button */}
+              <button
+                type="button"
+                onClick={handleManualRefreshHistory}
+                disabled={historyLoading}
+                className="flex items-center gap-1.5 px-3 py-1 rounded text-xs font-bold border transition-colors bg-white hover:bg-slate-100 text-slate-800 border-slate-300 disabled:opacity-50 cursor-pointer shadow-2xs"
+                title="Refresh Three Strike Analysis Table"
               >
-                <option value={1}>1 Minute</option>
-                <option value={3}>3 Minutes</option>
-                <option value={5}>5 Minutes</option>
-                <option value={15}>15 Minutes</option>
-              </select>
+                <svg
+                  className={`w-3.5 h-3.5 ${historyLoading ? "animate-spin text-blue-600" : "text-slate-600"}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                <span>{historyLoading ? "Refreshing..." : "Refresh Table"}</span>
+              </button>
+
+              {/* Timestamp indicator */}
+              {historyRefreshedAt && (
+                <span className="text-[11px] font-mono text-slate-400 hidden sm:inline">
+                  {historyRefreshedAt}
+                </span>
+              )}
+
+              {/* Download Dropdown / Buttons */}
+              <div className="flex items-center gap-1.5 pl-1 border-l border-slate-200">
+                <button
+                  type="button"
+                  onClick={handleDownloadExcel}
+                  disabled={isExporting !== null || historyRows.length === 0}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold border transition-colors bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300 disabled:opacity-40 cursor-pointer shadow-2xs"
+                  title="Download Formatted Excel (.xlsx) with colors"
+                >
+                  <svg className="w-3.5 h-3.5 text-emerald-700" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 20V4h7v5h5v11H6z" />
+                    <path d="M8.8 17.5l1.7-2.8 1.7 2.8h1.8l-2.6-4.1 2.4-3.9h-1.8l-1.5 2.6-1.5-2.6H7.2l2.4 3.9-2.6 4.1h1.8z" />
+                  </svg>
+                  <span>{isExporting === "excel" ? "Exporting..." : "Excel (.xlsx)"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadCSV}
+                  disabled={isExporting !== null || historyRows.length === 0}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold border transition-colors bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300 disabled:opacity-40 cursor-pointer shadow-2xs"
+                  title="Download Raw CSV (.csv)"
+                >
+                  <svg className="w-3.5 h-3.5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v12m0 0l-3.5-3.5M12 16l3.5-3.5M4 20h16" />
+                  </svg>
+                  <span>{isExporting === "csv" ? "Exporting..." : "CSV"}</span>
+                </button>
+              </div>
             </div>
           </div>
 
