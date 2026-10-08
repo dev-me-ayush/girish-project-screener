@@ -138,29 +138,29 @@ export function OverviewTerminal({
               <span className="absolute h-full w-full rounded-full bg-paper opacity-40 blip" />
               <span className="h-2 w-2 rounded-full bg-paper" />
             </span>
-            <p className="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-400">
+            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-slate-900">
               Benchmark Surveillance
             </p>
           </div>
-          <h1 className="text-xl font-semibold tracking-[-0.02em] text-paper sm:text-2xl">
+          <h1 className="text-xl font-bold tracking-[-0.02em] text-slate-900 sm:text-2xl">
             Market Overview
           </h1>
-          <p className="text-[13px] leading-relaxed text-zinc-400">
+          <p className="text-[13px] leading-relaxed font-medium text-slate-700">
             Real-time prices with Fibonacci AC/DC 38.2 levels
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-          <div className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line bg-zinc-900/80 px-2.5 font-mono text-[11px] text-zinc-300 tabular">
-            <span className="text-zinc-500">Close in</span>
-            <span className="w-6 text-right font-semibold text-paper">
+          <div className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 font-mono text-[11px] text-slate-800 tabular shadow-xs">
+            <span className="text-slate-500 font-medium">Close in</span>
+            <span className="w-6 text-right font-bold text-slate-900">
               {secondsToNextMinute}s
             </span>
           </div>
 
-          <div className="hidden h-8 items-center gap-1.5 rounded-lg border border-line bg-zinc-900/40 px-2.5 font-mono text-[11px] text-zinc-400 md:inline-flex tabular">
-            <span className="text-zinc-500">Synced</span>
-            <span className="text-zinc-200">{formattedTime}</span>
+          <div className="hidden h-8 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 font-mono text-[11px] text-slate-800 md:inline-flex tabular shadow-xs">
+            <span className="text-slate-500 font-medium">Synced</span>
+            <span className="text-slate-900 font-semibold">{formattedTime}</span>
           </div>
 
           <button
@@ -168,40 +168,40 @@ export function OverviewTerminal({
             onClick={() => fetchIndices(true)}
             disabled={isRefreshing}
             aria-label="Refresh live indices"
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line bg-zinc-900 px-3 font-mono text-[11px] font-medium text-paper transition-colors hover:border-zinc-700 hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50 focus-visible:outline-paper"
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 font-mono text-[11px] font-semibold text-slate-900 transition-colors hover:border-slate-400 hover:bg-slate-50 active:scale-[0.98] disabled:opacity-50 shadow-xs focus-visible:outline-slate-900"
           >
             <RefreshIcon
-              className={`h-3 w-3 ${isRefreshing ? "animate-spin text-paper" : "text-zinc-400"}`}
+              className={`h-3 w-3 ${isRefreshing ? "animate-spin text-slate-900" : "text-slate-600"}`}
             />
             <span>Refresh</span>
           </button>
         </div>
       </div>
 
-      {/* Institutional card — contained, rounded, hairline */}
+      {/* Institutional card — white background, slate border, soft shadow */}
       <section
         aria-label="Benchmark indices"
         aria-live="polite"
-        className="fade-in overflow-hidden rounded-xl border border-line bg-panel"
+        className="fade-in overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs"
       >
         <div className="w-full overflow-x-auto">
           <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="border-b border-line bg-zinc-950/60 font-mono text-[11px] uppercase tracking-[0.12em] text-zinc-400">
-                <th scope="col" className="px-5 py-3 font-medium">Index</th>
-                <th scope="col" className="px-5 py-3 text-right font-medium">Price</th>
-                <th scope="col" className="px-5 py-3 text-right font-medium">Change</th>
-                <th scope="col" className="px-5 py-3 text-right font-medium">AC 38.2</th>
-                <th scope="col" className="px-5 py-3 text-right font-medium">DC 38.2</th>
-                <th scope="col" className="px-5 py-3 text-right font-medium">Date</th>
+              <tr className="border-b border-slate-200 bg-slate-100 font-mono text-[11px] uppercase tracking-[0.12em] text-slate-900">
+                <th scope="col" className="px-5 py-3 font-bold">Index</th>
+                <th scope="col" className="px-5 py-3 text-right font-bold">Price</th>
+                <th scope="col" className="px-5 py-3 text-right font-bold">Change</th>
+                <th scope="col" className="px-5 py-3 text-right font-bold">AC 38.2</th>
+                <th scope="col" className="px-5 py-3 text-right font-bold">DC 38.2</th>
+                <th scope="col" className="px-5 py-3 text-right font-bold">Date</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-line bg-transparent">
+            <tbody className="divide-y divide-slate-200 bg-white">
               {indices.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-5 py-12 text-center">
-                    <p className="text-sm font-medium text-paper">No benchmark data</p>
-                    <p className="mt-1 font-mono text-[11px] text-zinc-500">
+                    <p className="text-sm font-bold text-slate-900">No benchmark data</p>
+                    <p className="mt-1 font-mono text-[11px] text-slate-500">
                       Waiting for the market gateway — try Refresh.
                     </p>
                   </td>
@@ -222,20 +222,20 @@ export function OverviewTerminal({
               return (
                 <tr
                   key={idx.symbol}
-                  className="transition-colors last:border-b-0 hover:bg-zinc-900/40"
+                  className="transition-colors last:border-b-0 hover:bg-slate-50"
                 >
                   {/* 1. Name */}
                   <td className="px-5 py-4 align-middle whitespace-nowrap">
-                    <p className="text-sm font-semibold tracking-[-0.01em] text-paper">
+                    <p className="text-sm font-bold tracking-[-0.01em] text-slate-900">
                       {idx.name}
                     </p>
-                    <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-500">
+                    <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">
                       {idx.symbol}
                     </p>
                   </td>
 
                   {/* 2. Price (NO rupee symbol) */}
-                  <td className="px-5 py-4 text-right align-middle font-mono text-[15px] font-semibold text-paper whitespace-nowrap tabular">
+                  <td className="px-5 py-4 text-right align-middle font-mono text-[15px] font-bold text-slate-900 whitespace-nowrap tabular">
                     {idx.lastPrice
                       ? idx.lastPrice.toLocaleString("en-IN", {
                           minimumFractionDigits: 2,
@@ -247,10 +247,10 @@ export function OverviewTerminal({
                   {/* 3. Price Change */}
                   <td className="px-5 py-4 text-right align-middle whitespace-nowrap">
                     <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 font-mono text-[11px] font-medium tabular ${
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[11px] font-bold tabular ${
                         isUp
-                          ? "border border-line bg-zinc-900 text-paper"
-                          : "border border-red-900/50 bg-red-950/30 text-drop"
+                          ? "border border-emerald-300 bg-emerald-50 text-emerald-700"
+                          : "border border-rose-300 bg-rose-50 text-rose-700"
                       }`}
                     >
                       {isUp ? "+" : ""}
@@ -260,7 +260,7 @@ export function OverviewTerminal({
                   </td>
 
                   {/* 4. AC 38.2 (NO rupee symbol) */}
-                  <td className="px-5 py-4 text-right align-middle font-mono text-[13px] font-medium text-zinc-300 whitespace-nowrap tabular">
+                  <td className="px-5 py-4 text-right align-middle font-mono text-[13px] font-semibold text-slate-700 whitespace-nowrap tabular">
                     {typeof ac38_2 === "number" && ac38_2 > 0
                       ? ac38_2.toLocaleString("en-IN", {
                           minimumFractionDigits: 2,
@@ -270,7 +270,7 @@ export function OverviewTerminal({
                   </td>
 
                   {/* 5. DC 38.2 (NO rupee symbol) */}
-                  <td className="px-5 py-4 text-right align-middle font-mono text-[13px] font-medium text-zinc-300 whitespace-nowrap tabular">
+                  <td className="px-5 py-4 text-right align-middle font-mono text-[13px] font-semibold text-slate-700 whitespace-nowrap tabular">
                     {typeof dc38_2 === "number" && dc38_2 > 0
                       ? dc38_2.toLocaleString("en-IN", {
                           minimumFractionDigits: 2,
@@ -280,7 +280,7 @@ export function OverviewTerminal({
                   </td>
 
                   {/* 6. Date */}
-                  <td className="px-5 py-4 text-right align-middle font-mono text-xs text-zinc-500 whitespace-nowrap tabular">
+                  <td className="px-5 py-4 text-right align-middle font-mono text-xs font-medium text-slate-500 whitespace-nowrap tabular">
                     {refDate}
                   </td>
                 </tr>
@@ -291,15 +291,15 @@ export function OverviewTerminal({
         </div>
 
         {/* Terminal telemetry footer — inside card */}
-        <div className="border-t border-line bg-ink/60 px-5 py-3">
-          <div className="flex flex-col gap-1.5 font-mono text-[11px] text-zinc-400 sm:flex-row sm:items-center sm:justify-between">
+        <div className="border-t border-slate-200 bg-slate-50 px-5 py-3">
+          <div className="flex flex-col gap-1.5 font-mono text-[11px] text-slate-600 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />
-              <span>Cash session 09:15 – 15:30 IST</span>
+              <span className="h-2 w-2 rounded-full bg-slate-900" />
+              <span className="font-medium text-slate-700">Cash session 09:15 – 15:30 IST</span>
             </div>
-            <div className="flex items-center gap-2 tabular">
+            <div className="flex items-center gap-2 tabular font-medium text-slate-600">
               <span>1-min close auto-sync</span>
-              <span aria-hidden="true" className="text-zinc-600">·</span>
+              <span aria-hidden="true" className="text-slate-400">·</span>
               <span>Upstox v2 gateway</span>
             </div>
           </div>

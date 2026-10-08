@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --env-file=.env.local --test tests/options-e2e.test.mjs"
   },
   "dependencies": {
     "@neon/config": "^1.8.2",

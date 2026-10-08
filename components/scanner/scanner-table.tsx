@@ -28,13 +28,13 @@ export function ScannerTable({
     <section
       aria-label="1-minute screener results"
       aria-live="polite"
-      className="fade-in overflow-hidden rounded-xl border border-line bg-panel font-mono shadow-sm"
+      className="fade-in overflow-hidden rounded-xl border border-slate-200 bg-white font-mono shadow-xs"
     >
       {/* Table Container */}
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-line bg-zinc-950/60 text-[11px] uppercase tracking-[0.12em] text-zinc-400">
+            <tr className="border-b border-slate-200 bg-slate-100 text-[11px] uppercase tracking-[0.12em] text-slate-900 font-bold">
               <th className="w-10 px-3 py-3 text-center font-medium">Pin</th>
               <th className="w-12 px-3 py-3 font-medium">#</th>
               <th className="px-3 py-3 font-medium">Symbol</th>

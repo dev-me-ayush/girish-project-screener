@@ -54,14 +54,14 @@ export function ScannerToolbar({
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search symbols, underlyings, strikes..."
             aria-label="Search screener instruments"
-            className="h-8 w-full rounded-lg border border-line bg-zinc-900/40 pl-8 pr-8 font-mono text-[11px] text-paper placeholder-zinc-500 transition-colors focus:border-zinc-600 focus:bg-zinc-900/70 focus:outline-none"
+            className="h-8 w-full rounded-lg border border-slate-300 bg-white pl-8 pr-8 font-mono text-[11px] font-medium text-slate-900 placeholder-slate-400 transition-colors focus:border-slate-500 focus:outline-none shadow-xs"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => onSearchChange("")}
               aria-label="Clear search"
-              className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-xs leading-none text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-paper"
+              className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-xs leading-none text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
             >
               ×
             </button>
@@ -72,9 +72,9 @@ export function ScannerToolbar({
           type="button"
           onClick={onDownload}
           title="Download instruments as Excel (.csv)"
-          className="inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-line bg-zinc-900 px-3 font-mono text-[11px] font-medium text-paper transition-colors hover:border-zinc-700 hover:bg-zinc-800 active:scale-[0.98]"
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-3 font-mono text-[11px] font-semibold text-slate-900 shadow-xs transition-colors hover:border-slate-400 hover:bg-slate-50 active:scale-[0.98]"
         >
-          <svg className="h-3 w-3 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <svg className="h-3 w-3 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
           </svg>
           <span className="hidden sm:inline">Download</span>
@@ -86,10 +86,10 @@ export function ScannerToolbar({
           onClick={onRefresh}
           disabled={isRefreshing}
           aria-label="Refresh 1-minute screener"
-          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-line bg-zinc-900 px-3 font-mono text-[11px] font-medium text-paper transition-colors hover:border-zinc-700 hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50"
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 font-mono text-[11px] font-semibold text-slate-900 shadow-xs transition-colors hover:border-slate-400 hover:bg-slate-50 active:scale-[0.98] disabled:opacity-50"
         >
           <RefreshIcon
-            className={`h-3 w-3 ${isRefreshing ? "animate-spin text-paper" : "text-zinc-400"}`}
+            className={`h-3 w-3 ${isRefreshing ? "animate-spin text-slate-900" : "text-slate-600"}`}
           />
           <span>{isRefreshing ? "Syncing" : "Refresh"}</span>
         </button>
@@ -99,7 +99,7 @@ export function ScannerToolbar({
       <div
         role="tablist"
         aria-label="Screener filters"
-        className="flex min-w-0 items-center gap-0.5 overflow-x-auto rounded-lg border border-line bg-zinc-900/90 p-0.5 scrollbar-none"
+        className="flex min-w-0 items-center gap-0.5 overflow-x-auto rounded-lg border border-slate-200 bg-slate-100 p-0.5 scrollbar-none"
       >
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
@@ -111,14 +111,14 @@ export function ScannerToolbar({
               onClick={() => onTabChange(tab.id)}
               className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-1 font-mono text-[11px] transition-colors ${
                 isActive
-                  ? "bg-paper font-semibold text-ink shadow-xs"
-                  : "text-zinc-400 hover:bg-zinc-800/60 hover:text-paper"
+                  ? "bg-white font-bold text-slate-900 shadow-xs"
+                  : "text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
               }`}
             >
               <span>{tab.label}</span>
               <span
-                className={`rounded px-1 tabular ${
-                  isActive ? "bg-zinc-800/15 text-ink" : "bg-zinc-900 text-zinc-500"
+                className={`rounded px-1.5 py-0.2 text-[10px] tabular font-bold ${
+                  isActive ? "bg-slate-100 text-slate-900" : "bg-slate-200/80 text-slate-600"
                 }`}
               >
                 {tab.count}
