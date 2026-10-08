@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getMarketSessionStatus } from "@/lib/scanner/market-calendar";
 import { ensureSessionLevels } from "@/lib/scanner/daily-levels";
+import { getActiveAtmOptionsContracts } from "@/lib/scanner/options-resolver";
 import { getSessionEmail, unauthorizedResponse } from "@/lib/session";
 import { serverError } from "@/lib/api-error";
 import { isCronAuthorized } from "@/lib/cron-auth";
@@ -20,8 +21,9 @@ export const dynamic = "force-dynamic";
  *
  * Query params:
  *   symbols=20MICRONS,RELIANCE  limit the run to these symbols (testing)
- *   limit=900                    max symbols per run (default 900, cap 2732)
- *   delayMs=1000                 pacing between Upstox calls (default 1000)
+ *   limit=2732                   max symbols per run (default 2732, full universe)
+ *   delayMs=250                  pacing between Upstox calls (default 250)
+ *   concurrency=6                parallel warmup workers (default 6, cap 12)
  */
 export async function GET(req: NextRequest) {
   try {
@@ -33,15 +35,20 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const session = getMarketSessionStatus();
-    const rawLimit = Number(searchParams.get("limit") || "900");
-    const rawDelay = Number(searchParams.get("delayMs") || "1000");
+    const rawLimit = Number(searchParams.get("limit") || "2732");
+    const rawDelay = Number(searchParams.get("delayMs") || "250");
+    const rawConcurrency = Number(searchParams.get("concurrency") || "6");
     const limit = Math.min(
-      Math.max(Number.isFinite(rawLimit) ? Math.floor(rawLimit) : 900, 1),
+      Math.max(Number.isFinite(rawLimit) ? Math.floor(rawLimit) : 2732, 1),
       2732
     );
     const delayMs = Math.min(
-      Math.max(Number.isFinite(rawDelay) ? Math.floor(rawDelay) : 1000, 0),
+      Math.max(Number.isFinite(rawDelay) ? Math.floor(rawDelay) : 250, 0),
       5000
+    );
+    const concurrency = Math.min(
+      Math.max(Number.isFinite(rawConcurrency) ? Math.floor(rawConcurrency) : 6, 1),
+      12
     );
     const symbolsParam = (searchParams.get("symbols") || "")
       .split(",")
@@ -55,19 +62,41 @@ export async function GET(req: NextRequest) {
       ORDER BY symbol ASC;
     `) as Array<{ symbol: string; instrument_key: string }>;
 
-    let instruments = dbStocks.map((s) => ({
+    // Option contracts (52 ATM) are warmed FIRST so their PDH/PDL/AC/DC
+    // are present at the open instead of trailing the equity queue.
+    // A chain failure must not block equity warmup, so resolve defensively.
+    let optionInstruments: Array<{
+      symbol: string;
+      instrument_key: string;
+      instrument_type: "OPTION";
+    }> = [];
+    try {
+      const contracts = await getActiveAtmOptionsContracts();
+      optionInstruments = contracts.map((o) => ({
+        symbol: String(o.symbol),
+        instrument_key: String(o.instrument_key),
+        instrument_type: "OPTION" as const,
+      }));
+    } catch (err) {
+      console.error("Warmup: option chain resolution failed, warming equities only:", err);
+    }
+
+    let equityInstruments = dbStocks.map((s) => ({
       symbol: String(s.symbol),
       instrument_key: String(s.instrument_key),
       instrument_type: "EQUITY" as const,
     }));
     if (symbolsParam.length > 0) {
       const wanted = new Set(symbolsParam);
-      instruments = instruments.filter((i) => wanted.has(i.symbol.toUpperCase()));
+      equityInstruments = equityInstruments.filter((i) => wanted.has(i.symbol.toUpperCase()));
+      optionInstruments = optionInstruments.filter((i) => wanted.has(i.symbol.toUpperCase()));
     }
+    const instruments = [...optionInstruments, ...equityInstruments];
 
     const stats = await ensureSessionLevels(session.sessionDate, instruments, {
       delayMs,
       maxSymbols: limit,
+      concurrency,
     });
 
     return NextResponse.json({

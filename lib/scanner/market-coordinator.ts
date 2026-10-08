@@ -1,7 +1,7 @@
 import { sql } from "../db";
 import { getMarketSessionStatus, getCandleCloseStampIST, MarketSessionStatus } from "./market-calendar";
 import { getActiveAtmOptionsContracts, ResolvedOptionContract } from "./options-resolver";
-import { getDailyReferenceLevel, preloadAllDailyReferenceLevels, triggerSessionWarmup, StockReferenceLevel } from "./daily-levels";
+import { getDailyReferenceLevel, preloadAllDailyReferenceLevels, triggerSessionWarmup, invalidatePreload, StockReferenceLevel } from "./daily-levels";
 import { fetchBatchQuotes, LiveMarketQuote } from "./batch-quotes";
 import { evaluate5mBreakout, flushPendingAlerts, BreakoutEvaluationResult } from "./breakout-engine";
 
@@ -79,24 +79,31 @@ export async function runFullMarketScan(forceRefresh: boolean = false): Promise<
   await preloadAllDailyReferenceLevels(session.sessionDate);
 
   // 5b. Background warmup for symbols still missing stored previous-session
-  // levels (single-flight per session, ~1 req/s paced, never awaited so the
-  // 1-minute scan stays fast). Reads must NEVER use live quotes as PDH/PDC.
+  // levels (single-flight per session, bounded-concurrency pool, never
+  // awaited so the 1-minute scan stays fast). Reads must NEVER use live
+  // quotes as PDH/PDC. When a pass completes, the bulk snapshot is
+  // invalidated so the next scan serves the freshly warmed levels in bulk.
+  // NOTE: the 52 option contracts are queued FIRST. They are few (one extra
+  // Upstox call each) and their PDH/PDL/AC/DC would otherwise stay "--" for
+  // hours behind the ~2,680-equity queue.
   void triggerSessionWarmup(
     session.sessionDate,
     [
-      ...dbStocks.map((s) => ({
-        symbol: s.symbol as string,
-        instrument_key: s.instrument_key as string,
-        instrument_type: "EQUITY" as const,
-      })),
       ...optionsContracts.map((o) => ({
         symbol: o.symbol,
         instrument_key: o.instrument_key,
         instrument_type: "OPTION" as const,
       })),
+      ...dbStocks.map((s) => ({
+        symbol: s.symbol as string,
+        instrument_key: s.instrument_key as string,
+        instrument_type: "EQUITY" as const,
+      })),
     ],
-    { delayMs: 1100 }
-  ).catch(() => {});
+    { delayMs: 250, concurrency: 6 }
+  )
+    .then(() => invalidatePreload())
+    .catch(() => {});
 
   // 6. Hydrate daily levels & breakout status concurrently
   // Single candle-close stamp for the whole scan: every symbol in this poll

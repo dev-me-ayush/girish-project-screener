@@ -1,6 +1,7 @@
 import { sql } from "../db";
 import { StockReferenceLevel } from "./daily-levels";
 import { getCandleCloseStampIST } from "./market-calendar";
+import { getIntradayCandles } from "../upstox";
 
 export type BreakoutDirection = "UP" | "LOW" | "INSIDE";
 
@@ -43,6 +44,128 @@ interface PendingAlert {
 
 const memoryState = new Map<string, SymbolSessionState>();
 const pendingAlerts: PendingAlert[] = [];
+
+// Tracks which session dates have been bulk-hydrated from Postgres so cold
+// starts / restarts / scaled instances don't re-stamp late poll times.
+let hydratedSessionDate = "";
+let hydrationInFlight: Promise<void> | null = null;
+
+function formatCandleStampIST(ts: string): string {
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return ts;
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const m: Record<string, string> = {};
+  for (const p of parts) m[p.type] = p.value;
+  const hh = m.hour === "24" ? "00" : m.hour;
+  return `${hh}:${m.minute}:${m.second}`;
+}
+
+/**
+ * Bulk-hydrates in-memory breakout state from persisted session alerts.
+ * Single query per session: on cold start the memory map is empty, so the
+ * first scan that actually sees a breakout would otherwise stamp the late
+ * poll time (e.g. 09:55) instead of the true first break (e.g. 09:15).
+ */
+export async function ensureBreakoutStateHydrated(sessionDate: string): Promise<void> {
+  if (hydratedSessionDate === sessionDate) return;
+  if (hydrationInFlight) {
+    await hydrationInFlight;
+    return;
+  }
+  hydrationInFlight = (async () => {
+  try {
+    const rows = (await sql`
+      SELECT symbol, breach_count, breakout_time
+      FROM scanner_alerts
+      WHERE session_date = ${sessionDate}::DATE
+      ORDER BY symbol ASC, breakout_time ASC;
+    `) as Array<{ symbol: string; breach_count: number; breakout_time: string }>;
+    for (const r of rows) {
+      const key = String(r.symbol);
+      let st = memoryState.get(key);
+      if (!st || st.sessionDate !== sessionDate) {
+        st = {
+          currentDirection: "INSIDE",
+          breachCount: 0,
+          firstBreachTime: null,
+          latestBreachTime: null,
+          breachTimes: [],
+          sessionDate,
+        };
+        memoryState.set(key, st);
+      }
+      const t = String(r.breakout_time);
+      if (!st.breachTimes.includes(t)) st.breachTimes.push(t);
+      if (!st.firstBreachTime) st.firstBreachTime = t;
+      st.latestBreachTime = t;
+      const c = Number(r.breach_count) || st.breachTimes.length;
+      if (c > st.breachCount) st.breachCount = c;
+    }
+  } catch (err) {
+    console.error("Breakout state hydration failed:", err);
+  }
+  hydratedSessionDate = sessionDate;
+  })();
+  try {
+    await hydrationInFlight;
+  } finally {
+    hydrationInFlight = null;
+  }
+}
+
+/**
+ * Resolves the TRUE first-breakout candle from Upstox 1m intraday history.
+ *
+ * The live poll only knows the wall-clock minute it first OBSERVED the
+ * breakout. When levels/quotes arrive late (session warmup for ~2,700
+ * symbols takes minutes) or the process restarted, that observation time
+ * is late (e.g. 09:55) even though the price gapped/broke at the open
+ * (e.g. 09:15). Scanning chronological 1m candles finds the actual first
+ * candle whose close crossed the level; a gap-open beyond the level
+ * returns the first candle's own stamp (09:15:00).
+ *
+ * Burst guard: hundreds of symbols can breach in the same scan (each newly
+ * warmed symbol whose price already sits outside its band). Intraday
+ * fetches are capped at MAX_TRUE_STAMP_INFLIGHT concurrent Upstox calls;
+ * overflow falls back to the poll stamp and is corrected later by the
+ * backfill batch (scripts/backfill-true-breakout-times.mjs).
+ */
+const MAX_TRUE_STAMP_INFLIGHT = 4;
+let trueStampInflight = 0;
+
+export async function resolveTrueBreakoutStamp(
+  instrumentKey: string,
+  levelPrice: number,
+  direction: BreakoutDirection,
+  fallbackStamp: string
+): Promise<string> {
+  if (trueStampInflight >= MAX_TRUE_STAMP_INFLIGHT) return fallbackStamp;
+  trueStampInflight++;
+  try {
+    const candles = await getIntradayCandles(instrumentKey, "1m");
+    if (!candles || candles.length === 0) return fallbackStamp;
+    const chrono = [...candles].reverse();
+    for (const c of chrono) {
+      if (direction === "UP" && c.close > levelPrice) {
+        return formatCandleStampIST(c.timestamp);
+      }
+      if (direction === "LOW" && c.close < levelPrice) {
+        return formatCandleStampIST(c.timestamp);
+      }
+    }
+    return fallbackStamp;
+  } catch {
+    return fallbackStamp;
+  } finally {
+    trueStampInflight--;
+  }
+}
 
 /**
  * Flushes buffered alerts into Neon Postgres in controlled batches of 25.
@@ -95,6 +218,9 @@ export async function evaluateBreakout(
   // Candle-close trigger: normalize poll/wait time to the closed candle's
   // close stamp (HH:MM:00). All state + persisted alerts use this stamp.
   const candleStamp = getCandleCloseStampIST(currentTimeIST);
+  // Recover persisted session state once per session so restarts don't
+  // re-stamp Trigger #1 at a late poll time.
+  await ensureBreakoutStateHydrated(session_date);
   let state = memoryState.get(symbol);
 
   // Reset state if session date rolled over
@@ -154,12 +280,50 @@ export async function evaluateBreakout(
   const shouldAlert = isFreshCrossing && !alreadyAlertedThisCandle;
 
   if (shouldAlert) {
+    // First breach of the session: ground the stamp in 1m candle history,
+    // not the late poll minute. A gap-open below DC / above AC resolves to
+    // the opening candle (09:15:00) instead of e.g. 09:55:00.
+    let effectiveStamp = candleStamp;
+    if (state.breachTimes.length === 0 && levelPrice !== null) {
+      const trueStamp = await resolveTrueBreakoutStamp(
+        instrument_key,
+        levelPrice,
+        newDirection,
+        candleStamp
+      );
+      effectiveStamp = trueStamp;
+    }
+    // Restored state already contains this true stamp (e.g. 09:15 persisted
+    // by another instance): adopt it for display without double-counting.
+    if (state.breachTimes.includes(effectiveStamp)) {
+      state.currentDirection = newDirection;
+      if (!state.firstBreachTime) state.firstBreachTime = effectiveStamp;
+      state.latestBreachTime = effectiveStamp;
+      return {
+        symbol,
+        status,
+        direction: newDirection,
+        levelName,
+        levelPrice,
+        triggerPrice: ltp,
+        breachCount: state.breachCount,
+        firstBreachTime: state.firstBreachTime,
+        latestBreachTime: state.latestBreachTime,
+        breachTimes: [...state.breachTimes],
+        isFreshCrossing: false,
+      };
+    }
     state.breachCount += 1;
     if (!state.firstBreachTime) {
-      state.firstBreachTime = candleStamp;
+      state.firstBreachTime = effectiveStamp;
     }
-    state.latestBreachTime = candleStamp;
-    state.breachTimes.push(candleStamp);
+    state.latestBreachTime = effectiveStamp;
+    if (!state.breachTimes.includes(effectiveStamp)) {
+      state.breachTimes.push(effectiveStamp);
+    } else {
+      // Same-candle re-cross after hydration: keep count, don't duplicate.
+      state.latestBreachTime = effectiveStamp;
+    }
     state.currentDirection = newDirection;
 
     // Buffer alert into memory queue for batched ingestion as distinct event
@@ -174,7 +338,7 @@ export async function evaluateBreakout(
       direction: directionLabel,
       breach_count: state.breachCount,
       session_date,
-      breakout_time: candleStamp,
+      breakout_time: effectiveStamp,
     });
   } else if (isLiveMarket && newDirection === "INSIDE" && state.currentDirection !== "INSIDE") {
     // Pullback inside range: update state to INSIDE but preserve prior breach counts & times

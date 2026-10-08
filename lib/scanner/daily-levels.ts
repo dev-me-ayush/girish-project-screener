@@ -14,6 +14,11 @@ export interface StockReferenceLevel extends FibLevels {
 const memoryDailyLevels = new Map<string, StockReferenceLevel>();
 let cachedSessionDate: string = "";
 let preloadedDate: string = "";
+let preloadedAt: number = 0;
+// Bulk preload refresh cadence: warmup persists rows continuously, so the
+// scan's snapshot must refresh periodically to pick newly stored levels up
+// promptly instead of serving a stale first-scan snapshot all session.
+const PRELOAD_TTL_MS = 5 * 60 * 1000;
 
 function buildLevel(
   symbol: string,
@@ -65,9 +70,12 @@ async function persistLevel(level: StockReferenceLevel): Promise<void> {
 
 /**
  * Bulk pre-loads all daily reference levels for the session in a single database query.
+ * Refreshes at most every PRELOAD_TTL_MS so rows persisted by the session
+ * warmup (or another instance) are picked up promptly by scans.
  */
 export async function preloadAllDailyReferenceLevels(sessionDate: string): Promise<void> {
-  if (preloadedDate === sessionDate && memoryDailyLevels.size > 0) return;
+  const now = Date.now();
+  if (preloadedDate === sessionDate && memoryDailyLevels.size > 0 && now - preloadedAt < PRELOAD_TTL_MS) return;
   try {
     const dbRows = await sql`
       SELECT symbol, instrument_key, instrument_type, session_date, pdh, pdl, pdc, range, delta, ac38_2, dc38_2, average
@@ -76,6 +84,7 @@ export async function preloadAllDailyReferenceLevels(sessionDate: string): Promi
     `;
     preloadedDate = sessionDate;
     cachedSessionDate = sessionDate;
+    preloadedAt = now;
     for (const row of dbRows) {
       const level: StockReferenceLevel = {
         symbol: row.symbol,
@@ -98,16 +107,26 @@ export async function preloadAllDailyReferenceLevels(sessionDate: string): Promi
 }
 
 /**
+ * Forces the next scan to re-run the bulk preload (e.g. right after a
+ * warmup pass completes), so freshly persisted levels appear immediately
+ * instead of waiting for the TTL refresh.
+ */
+export function invalidatePreload(): void {
+  preloadedAt = 0;
+}
+
+/**
  * Fast read path for scans: memory cache, then Neon Postgres.
  *
- * Deliberately performs ZERO network calls so the 1-minute scan stays
- * bounded no matter how many symbols are missing. Symbols with no stored
- * row resolve to zero levels (rendered as "--") until the session warmup
- * (`ensureSessionLevels`) persists their previous-session values.
+ * Performs ZERO network calls so the 1-minute scan stays bounded no matter
+ * how many symbols are missing. Symbols with no stored row resolve to zero
+ * levels (rendered as "--") WITHOUT being cached, so the periodic bulk
+ * preload (or the warmup's direct write) picks up their real values as soon
+ * as they are persisted — levels populate in bulk instead of trickling in
+ * one symbol at a time.
  *
- * Previous-session history is immutable during a trading session, so even
- * zero results are cached in memory for the session: refetching cannot
- * produce different values, only wasted Upstox calls.
+ * Previous-session history is immutable during a trading session, so stored
+ * rows are safe to keep in memory for the session.
  */
 export async function getDailyReferenceLevel(
   symbol: string,
@@ -120,6 +139,7 @@ export async function getDailyReferenceLevel(
     memoryDailyLevels.clear();
     cachedSessionDate = sessionDate;
     preloadedDate = "";
+    preloadedAt = 0;
   }
 
   const cacheKey = `${symbol}_${sessionDate}`;
@@ -128,44 +148,48 @@ export async function getDailyReferenceLevel(
     return memoryHit;
   }
 
-  // Check Neon Postgres only if not already bulk preloaded
-  if (preloadedDate !== sessionDate) {
-    try {
-      const dbRows = await sql`
-        SELECT symbol, instrument_key, instrument_type, session_date, pdh, pdl, pdc, range, delta, ac38_2, dc38_2, average
-        FROM daily_reference_levels
-        WHERE symbol = ${symbol} AND session_date = ${sessionDate}::DATE
-        LIMIT 1;
-      `;
-
-      if (dbRows.length > 0) {
-        const row = dbRows[0];
-        const level: StockReferenceLevel = {
-          symbol: row.symbol,
-          instrument_key: row.instrument_key,
-          instrument_type: row.instrument_type,
-          session_date: sessionDate,
-          pdh: Number(row.pdh),
-          pdl: Number(row.pdl),
-          pdc: Number(row.pdc),
-          range: Number(row.range),
-          ac38_2: Number(row.ac38_2),
-          dc38_2: Number(row.dc38_2),
-          average: Number(row.average),
-        };
-        memoryDailyLevels.set(cacheKey, level);
-        return level;
-      }
-    } catch (err) {
-      console.error(`DB read error for daily levels of ${symbol}:`, err);
-    }
+  // When a bulk preload has already snapshotted this session, it contains
+  // every stored row: a miss here means genuinely not warmed yet. Return
+  // empty WITHOUT caching, so the next TTL refresh surfaces the warmed row.
+  if (preloadedDate === sessionDate) {
+    return emptyLevel(symbol, instrumentKey, instrumentType, sessionDate);
   }
 
-  // No stored row: return (and session-cache) an empty level. The warmup
-  // fills the real previous-session values asynchronously.
-  const empty = emptyLevel(symbol, instrumentKey, instrumentType, sessionDate);
-  memoryDailyLevels.set(cacheKey, empty);
-  return empty;
+  // First-load path (no bulk snapshot yet in this process): single-row check.
+  try {
+    const dbRows = await sql`
+      SELECT symbol, instrument_key, instrument_type, session_date, pdh, pdl, pdc, range, delta, ac38_2, dc38_2, average
+      FROM daily_reference_levels
+      WHERE symbol = ${symbol} AND session_date = ${sessionDate}::DATE
+      LIMIT 1;
+    `;
+
+    if (dbRows.length > 0) {
+      const row = dbRows[0];
+      const level: StockReferenceLevel = {
+        symbol: row.symbol,
+        instrument_key: row.instrument_key,
+        instrument_type: row.instrument_type,
+        session_date: sessionDate,
+        pdh: Number(row.pdh),
+        pdl: Number(row.pdl),
+        pdc: Number(row.pdc),
+        range: Number(row.range),
+        ac38_2: Number(row.ac38_2),
+        dc38_2: Number(row.dc38_2),
+        average: Number(row.average),
+      };
+      memoryDailyLevels.set(cacheKey, level);
+      return level;
+    }
+  } catch (err) {
+    console.error(`DB read error for daily levels of ${symbol}:`, err);
+  }
+
+  // No stored row yet: return empty WITHOUT caching. The warmup persists
+  // the real previous-session values asynchronously and the bulk preload
+  // picks them up on its next refresh.
+  return emptyLevel(symbol, instrumentKey, instrumentType, sessionDate);
 }
 
 export interface SessionWarmupInstrument {
@@ -188,22 +212,26 @@ export interface SessionWarmupStats {
  * completed trading session's PDH/PDL/PDC from Upstox historical daily
  * candles for every instrument missing a stored row, then persists them.
  *
- * Sequential with a ~1s pace (~60 req/min) to stay under Upstox rate
- * limits alongside the 1-minute quote cycle. Resumable: re-runs only
+ * Bounded-concurrency worker pool (default 6) with pacing between
+ * dispatches and the built-in 429 retry in the Upstox client, so a full
+ * ~2,700-symbol universe fills in minutes instead of trickling in one
+ * symbol per second across most of the session. Resumable: re-runs only
  * attempt symbols still missing from the database.
  */
 export async function ensureSessionLevels(
   sessionDate: string,
   instruments: SessionWarmupInstrument[],
-  opts?: { delayMs?: number; maxSymbols?: number }
+  opts?: { delayMs?: number; maxSymbols?: number; concurrency?: number }
 ): Promise<SessionWarmupStats> {
-  const delayMs = opts?.delayMs ?? 1000;
+  const delayMs = opts?.delayMs ?? 250;
   const maxSymbols = opts?.maxSymbols ?? Number.POSITIVE_INFINITY;
+  const concurrency = Math.max(1, Math.min(opts?.concurrency ?? 6, 12));
 
   if (cachedSessionDate !== sessionDate) {
     memoryDailyLevels.clear();
     cachedSessionDate = sessionDate;
     preloadedDate = "";
+    preloadedAt = 0;
   }
 
   const names = instruments.map((i) => i.symbol);
@@ -221,9 +249,9 @@ export async function ensureSessionLevels(
   const missing = instruments.filter((i) => !stored.has(i.symbol)).slice(0, maxSymbols);
   let filled = 0;
   let failed = 0;
+  let cursor = 0;
 
-  for (let n = 0; n < missing.length; n++) {
-    const inst = missing[n];
+  async function fillOne(inst: SessionWarmupInstrument): Promise<void> {
     try {
       const range = await getPreviousDayRange(inst.instrument_key);
       if (range.range > 0 && range.pdc > 0) {
@@ -245,21 +273,29 @@ export async function ensureSessionLevels(
         filled++;
       } else {
         // No previous-session history (e.g. freshly listed weekly option):
-        // session-cache the empty level so scans render "--" without refetching.
-        memoryDailyLevels.set(
-          `${inst.symbol}_${sessionDate}`,
-          emptyLevel(inst.symbol, inst.instrument_key, inst.instrument_type, sessionDate)
-        );
+        // do NOT cache the empty level — the next bulk preload simply
+        // skips it again until real history exists.
         failed++;
       }
     } catch (err) {
       console.error(`Session warmup fetch failed for ${inst.symbol}:`, err);
       failed++;
     }
-    if (n < missing.length - 1 && delayMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+
+  async function worker(): Promise<void> {
+    while (true) {
+      const n = cursor++;
+      if (n >= missing.length) return;
+      await fillOne(missing[n]);
+      if (delayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
     }
   }
+
+  const workers = Math.min(concurrency, Math.max(missing.length, 1));
+  await Promise.all(Array.from({ length: workers }, () => worker()));
 
   return {
     sessionDate,
@@ -281,7 +317,7 @@ const warmupInFlight = new Map<string, Promise<SessionWarmupStats>>();
 export function triggerSessionWarmup(
   sessionDate: string,
   instruments: SessionWarmupInstrument[],
-  opts?: { delayMs?: number; maxSymbols?: number }
+  opts?: { delayMs?: number; maxSymbols?: number; concurrency?: number }
 ): Promise<SessionWarmupStats> {
   const existing = warmupInFlight.get(sessionDate);
   if (existing) return existing;
