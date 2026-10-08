@@ -24,24 +24,39 @@ export async function POST(request: Request) {
       Authorization: `Bearer ${token}`,
     };
 
-    // Fetch 1-min intraday candles for all CE & PE instruments in parallel
+    // Fetch 1-min intraday candles for all CE & PE instruments in parallel with retry
     const candlesByKey: Record<string, Array<[string, number, number, number, number, number, number]>> = {};
 
+    interface StrikeItem {
+      strike: number;
+      ceKey: string;
+      peKey: string;
+      cePrevOI?: number;
+      pePrevOI?: number;
+    }
+
+    const strikeList: StrikeItem[] = strikes;
+
+    const allKeys = Array.from(new Set(strikeList.flatMap((s) => [s.ceKey, s.peKey]).filter(Boolean)));
+
     await Promise.all(
-      strikes.flatMap((s) => [s.ceKey, s.peKey]).filter(Boolean).map(async (key) => {
-        try {
-          const url = `https://api.upstox.com/v2/historical-candle/intraday/${encodeURIComponent(key)}/1minute`;
-          const res = await fetch(url, { headers, next: { revalidate: 10 } });
-          if (res.ok) {
-            const data = await res.json();
-            candlesByKey[key] = data.data?.candles || [];
-          } else {
-            candlesByKey[key] = [];
+      allKeys.map(async (key) => {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const url = `https://api.upstox.com/v2/historical-candle/intraday/${encodeURIComponent(key)}/1minute`;
+            const res = await fetch(url, { headers, next: { revalidate: 10 } });
+            if (res.ok) {
+              const data = await res.json();
+              candlesByKey[key] = data.data?.candles || [];
+              return;
+            }
+          } catch (e) {
+            console.error(`Error fetching candle for ${key} (attempt ${attempt + 1}):`, e);
           }
-        } catch (e) {
-          console.error(`Error fetching candle for ${key}:`, e);
-          candlesByKey[key] = [];
+          // small pause before retry if failed
+          await new Promise((resolve) => setTimeout(resolve, 150));
         }
+        candlesByKey[key] = [];
       })
     );
 
@@ -72,16 +87,25 @@ export async function POST(request: Request) {
       }
     }
 
-    // Get the base/opening OI for each contract (earliest candle of today or prev_oi)
+    // Base OI mapping: Use exact Upstox previous day's close (prev_oi) passed from option chain.
+    // Fall back to earliest 09:15 candle if prev_oi is not provided.
     const baseOIByKey: Record<string, number> = {};
-    for (const key of Object.keys(candlesByKey)) {
-      const arr = candlesByKey[key];
-      if (arr.length > 0) {
-        // Earliest candle of the day
-        const earliest = arr[arr.length - 1];
-        baseOIByKey[key] = earliest[6] || 0;
-      } else {
-        baseOIByKey[key] = 0;
+    for (const s of strikeList) {
+      if (s.ceKey) {
+        if (typeof s.cePrevOI === "number") {
+          baseOIByKey[s.ceKey] = s.cePrevOI;
+        } else {
+          const arr = candlesByKey[s.ceKey] || [];
+          baseOIByKey[s.ceKey] = arr.length > 0 ? (arr[arr.length - 1][6] || 0) : 0;
+        }
+      }
+      if (s.peKey) {
+        if (typeof s.pePrevOI === "number") {
+          baseOIByKey[s.peKey] = s.pePrevOI;
+        } else {
+          const arr = candlesByKey[s.peKey] || [];
+          baseOIByKey[s.peKey] = arr.length > 0 ? (arr[arr.length - 1][6] || 0) : 0;
+        }
       }
     }
 

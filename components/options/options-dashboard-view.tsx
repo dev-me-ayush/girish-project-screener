@@ -121,10 +121,12 @@ export function OptionsDashboardView() {
         strike: s,
         ceKey: match?.callInstrumentKey || "",
         peKey: match?.putInstrumentKey || "",
+        cePrevOI: match?.callPrevOI,
+        pePrevOI: match?.putPrevOI,
       };
     });
 
-    if (strikesPayload.some((s) => !s.ceKey && !s.peKey)) return;
+    if (strikesPayload.some((s) => !s.ceKey || !s.peKey)) return;
 
     async function fetchHistory() {
       try {
