@@ -81,11 +81,11 @@ export async function ensureBreakoutStateHydrated(sessionDate: string): Promise<
   hydrationInFlight = (async () => {
   try {
     const rows = (await sql`
-      SELECT symbol, breach_count, breakout_time
+      SELECT symbol, breach_count, breakout_time, direction
       FROM scanner_alerts
       WHERE session_date = ${sessionDate}::DATE
       ORDER BY symbol ASC, breakout_time ASC;
-    `) as Array<{ symbol: string; breach_count: number; breakout_time: string }>;
+    `) as Array<{ symbol: string; breach_count: number; breakout_time: string; direction: string }>;
     for (const r of rows) {
       const key = String(r.symbol);
       let st = memoryState.get(key);
@@ -106,6 +106,12 @@ export async function ensureBreakoutStateHydrated(sessionDate: string): Promise<
       st.latestBreachTime = t;
       const c = Number(r.breach_count) || st.breachTimes.length;
       if (c > st.breachCount) st.breachCount = c;
+      // Restore the live side from the latest persisted alert. Without
+      // this, every restart/redeploy/scale-out starts at INSIDE and the
+      // first poll re-fires a phantom Trigger #(n+1) for every symbol
+      // still holding outside its band (e.g. the 10:46 IST storm).
+      const d = String(r.direction || "").toUpperCase();
+      st.currentDirection = d === "BULLISH" ? "UP" : d === "BEARISH" ? "LOW" : st.currentDirection;
     }
   } catch (err) {
     console.error("Breakout state hydration failed:", err);

@@ -32,12 +32,15 @@ const token = process.env.UPSTOX_ACCESS_TOKEN;
 const headers = { Accept: "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 const BASE = "https://api.upstox.com/v2";
 
-const args = Object.fromEntries(
-  process.argv.slice(2).map((a) => {
-    const m = a.match(/^--([^=]+)(=(.*))?$/);
-    return [m[1], m[3] ?? true];
-  })
-);
+const rawArgs = process.argv.slice(2);
+const args = {};
+for (let i = 0; i < rawArgs.length; i++) {
+  const m = rawArgs[i].match(/^--([^=]+)(=(.*))?$/);
+  if (!m) continue;
+  if (m[3] !== undefined) args[m[1]] = m[3];
+  else if (i + 1 < rawArgs.length && !rawArgs[i + 1].startsWith("--")) args[m[1]] = rawArgs[++i];
+  else args[m[1]] = true;
+}
 const APPLY = args.apply === true || args.apply === "true";
 const LIMIT = Math.min(Math.max(Number(args.limit || 20), 1), 200);
 const ONLY_SYMBOLS = String(args.symbols || "")
