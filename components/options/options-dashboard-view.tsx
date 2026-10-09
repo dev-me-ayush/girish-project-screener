@@ -39,6 +39,7 @@ interface HistoryRow {
   totalPutOIChange: number;
   difference: number;
   changeDiff: number;
+  signal?: "BULLISH" | "BEARISH" | null;
   revSignal: boolean;
 }
 
@@ -771,7 +772,7 @@ export function OptionsDashboardView() {
                     Change% diff (Δ)
                   </th>
                   <th rowSpan={2} className="py-2.5 px-3.5 text-center font-bold">
-                    Rev. Signal
+                    Signal
                   </th>
                 </tr>
                 <tr className="border-t border-slate-300">
@@ -856,9 +857,13 @@ export function OptionsDashboardView() {
                           {formatIndianNumber(row.changeDiff)}
                         </td>
                         <td className="py-2.5 px-3.5 text-center">
-                          {row.revSignal ? (
-                            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
-                              REVERSAL
+                          {row.signal === "BULLISH" || (!row.signal && row.revSignal) ? (
+                            <span className="text-[11px] font-black uppercase tracking-wider text-emerald-600">
+                              BULLISH
+                            </span>
+                          ) : row.signal === "BEARISH" ? (
+                            <span className="text-[11px] font-black uppercase tracking-wider text-rose-600">
+                              BEARISH
                             </span>
                           ) : (
                             <span className="text-slate-300">-</span>

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { annotateOISignals } from "@/lib/options-signals";
 
 export const dynamic = "force-dynamic";
 
@@ -168,27 +169,15 @@ export async function POST(request: Request) {
         totalCallOIChange,
         totalPutOIChange,
         difference,
-        changeDiff: 0, // will compute relative to next row (older time)
+        changeDiff: 0, // computed below relative to next row (older time)
+        signal: null,
         revSignal: false,
       });
     }
 
-    // Compute changeDiff (Delta = Diff_T - Diff_{T-1})
-    // Since rows are ordered newest to oldest: Diff_{T-1} is at index + 1
-    for (let i = 0; i < rows.length; i++) {
-      if (i + 1 < rows.length) {
-        const prevDiff = rows[i + 1].difference;
-        rows[i].changeDiff = rows[i].difference - prevDiff;
-        // Reversal signal when changeDiff flips from negative to positive
-        const nextOlderDelta = i + 2 < rows.length ? rows[i + 1].difference - rows[i + 2].difference : 0;
-        if (rows[i].changeDiff > 0 && nextOlderDelta <= 0) {
-          rows[i].revSignal = true;
-        }
-      } else {
-        rows[i].changeDiff = 0;
-        rows[i].revSignal = false;
-      }
-    }
+    // Compute changeDiff (Delta = Diff_T - Diff_{T-1}) and directional
+    // BULLISH / BEARISH inflection signals (newest to oldest).
+    annotateOISignals(rows);
 
     return NextResponse.json(
       {

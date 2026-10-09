@@ -11,7 +11,17 @@ export interface HistoryRowExport {
   totalPutOIChange: number;
   difference: number;
   changeDiff: number;
+  signal?: "BULLISH" | "BEARISH" | null;
   revSignal: boolean;
+}
+
+function signalLabel(row: HistoryRowExport): string {
+  if (row.signal === "BULLISH") return "BULLISH";
+  if (row.signal === "BEARISH") return "BEARISH";
+  // Legacy rows predate directional signals: revSignal only fired on a
+  // positive (bullish) inflection, so map it to BULLISH.
+  if (row.revSignal) return "BULLISH";
+  return "-";
 }
 
 export interface ExportOptionsMetadata {
@@ -53,7 +63,7 @@ export function generateHistoryCSV(
       "PUT OI Change",
       "Difference",
       "Change% diff (Δ)",
-      "Rev. Signal",
+      "Signal",
     ].join(",")
   );
 
@@ -74,7 +84,7 @@ export function generateHistoryCSV(
       row.totalPutOIChange,
       row.difference,
       row.changeDiff,
-      row.revSignal ? "REVERSAL" : "-",
+      signalLabel(row),
     ];
     lines.push(fields.join(","));
   }
@@ -143,7 +153,7 @@ export async function createHistoryExcelWorkbook(
   worksheet.getCell("K4").value = "Change% diff (Δ)";
 
   worksheet.mergeCells("L4:L5");
-  worksheet.getCell("L4").value = "Rev. Signal";
+  worksheet.getCell("L4").value = "Signal";
 
   worksheet.getRow(4).height = 22;
 
@@ -272,18 +282,16 @@ export async function createHistoryExcelWorkbook(
     deltaCell.alignment = { vertical: "middle", horizontal: "right" };
     deltaCell.border = thinBorder;
 
-    // Reversal Signal
+    // Directional signal: BULLISH in green text, BEARISH in red text
     const sigCell = xlRow.getCell(12);
-    sigCell.value = row.revSignal ? "REVERSAL" : "-";
+    const sigLabel = signalLabel(row);
+    sigCell.value = sigLabel;
     sigCell.alignment = { vertical: "middle", horizontal: "center" };
     sigCell.border = thinBorder;
-    if (row.revSignal) {
-      sigCell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FF059669" },
-      };
-      sigCell.font = { name: "Segoe UI", bold: true, size: 9, color: { argb: "FFFFFFFF" } };
+    if (sigLabel === "BULLISH") {
+      sigCell.font = { name: "Segoe UI", bold: true, size: 9, color: { argb: "FF059669" } };
+    } else if (sigLabel === "BEARISH") {
+      sigCell.font = { name: "Segoe UI", bold: true, size: 9, color: { argb: "FFE11D48" } };
     } else {
       sigCell.font = { name: "Segoe UI", size: 9, color: { argb: "FF94A3B8" } };
     }
@@ -303,7 +311,7 @@ export async function createHistoryExcelWorkbook(
   worksheet.getColumn(9).width = 17; // Put Total
   worksheet.getColumn(10).width = 16; // Diff
   worksheet.getColumn(11).width = 18; // Delta
-  worksheet.getColumn(12).width = 14; // Rev Signal
+  worksheet.getColumn(12).width = 14; // Signal
 
   return workbook;
 }

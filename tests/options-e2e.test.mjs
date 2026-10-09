@@ -219,7 +219,7 @@ describe("6. Export Features: CSV & Excel Generator Integrity", () => {
     assert.ok(typeof csv === "string", "CSV must return a string");
     assert.ok(csv.includes("Index,NIFTY 50,Expiry,2026-10-13,Interval,3 Minutes"));
     assert.ok(csv.includes("Time,22300 CALL,22300 PUT,22350 CALL,22350 PUT,22400 CALL,22400 PUT"));
-    assert.ok(csv.includes("14:15,3243825,1718145,3353610,1718665,6802575,1344460,13400010,4781270,-8618740,164255,REVERSAL"));
+    assert.ok(csv.includes("14:15,3243825,1718145,3353610,1718665,6802575,1344460,13400010,4781270,-8618740,164255,BULLISH"));
     assert.ok(csv.includes("14:12,2938455,1674530,3198195,1511640,6707545,1027910,12844195,4214080,-8630115,-859560,-"));
   });
 
@@ -252,7 +252,7 @@ describe("6. Export Features: CSV & Excel Generator Integrity", () => {
     assert.equal(row6.getCell(9).value, 4781270);  // Total Put
     assert.equal(row6.getCell(10).value, -8618740); // Diff
     assert.equal(row6.getCell(11).value, 164255);   // Delta
-    assert.equal(row6.getCell(12).value, "REVERSAL");
+    assert.equal(row6.getCell(12).value, "BULLISH");
 
     // Check buffer export ability
     const buffer = await wb.xlsx.writeBuffer();
