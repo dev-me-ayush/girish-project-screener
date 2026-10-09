@@ -25,7 +25,7 @@ export async function GET(request: Request) {
       try {
         const quoteRes = await fetch(
           `https://api.upstox.com/v2/market-quote/quotes?instrument_key=${encodeURIComponent(idx.key)}`,
-          { headers, next: { revalidate: 10 } }
+          { headers, cache: "no-store" }
         );
         if (quoteRes.ok) {
           const qData = await quoteRes.json();
@@ -52,7 +52,7 @@ export async function GET(request: Request) {
     // 2. Fetch Option Contracts & available Expiries for the selected index
     const contractsRes = await fetch(
       `https://api.upstox.com/v2/option/contract?instrument_key=${encodeURIComponent(instrumentKey)}`,
-      { headers, next: { revalidate: 60 } }
+      { headers, cache: "no-store" }
     );
     if (!contractsRes.ok) {
       return NextResponse.json({ error: "Failed to fetch option contracts" }, { status: 502 });
@@ -89,7 +89,7 @@ export async function GET(request: Request) {
       const chainUrl = `https://api.upstox.com/v2/option/chain?instrument_key=${encodeURIComponent(
         instrumentKey
       )}&expiry_date=${requestedExpiry}`;
-      const chainRes = await fetch(chainUrl, { headers, next: { revalidate: 5 } });
+      const chainRes = await fetch(chainUrl, { headers, cache: "no-store" });
       if (chainRes.ok) {
         const cData = await chainRes.json();
         chainRows = cData.data || [];
@@ -153,22 +153,29 @@ export async function GET(request: Request) {
       };
     });
 
-    return NextResponse.json({
-      success: true,
-      instrumentKey,
-      spotPrice,
-      atmStrike,
-      step: selectedConfig.step,
-      indices: indicesQuotes,
-      expiries,
-      selectedExpiry: requestedExpiry,
-      pcr,
-      totalCallOI,
-      totalPutOI,
-      maxCallVolume,
-      maxPutVolume,
-      chain: formattedChain,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        instrumentKey,
+        spotPrice,
+        atmStrike,
+        step: selectedConfig.step,
+        indices: indicesQuotes,
+        expiries,
+        selectedExpiry: requestedExpiry,
+        pcr,
+        totalCallOI,
+        totalPutOI,
+        maxCallVolume,
+        maxPutVolume,
+        chain: formattedChain,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+        },
+      }
+    );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Internal server error";
     console.error("API /api/options/chain error:", error);

@@ -39,15 +39,25 @@ export async function POST(request: Request) {
 
     const allKeys = Array.from(new Set(strikeList.flatMap((s) => [s.ceKey, s.peKey]).filter(Boolean)));
 
+    // Calculate current Indian standard date (YYYY-MM-DD)
+    const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    const todayISTString = `${nowIST.getFullYear()}-${String(nowIST.getMonth() + 1).padStart(2, "0")}-${String(
+      nowIST.getDate()
+    ).padStart(2, "0")}`;
+
     await Promise.all(
       allKeys.map(async (key) => {
         for (let attempt = 0; attempt < 2; attempt++) {
           try {
             const url = `https://api.upstox.com/v2/historical-candle/intraday/${encodeURIComponent(key)}/1minute`;
-            const res = await fetch(url, { headers, next: { revalidate: 10 } });
+            const res = await fetch(url, { headers, cache: "no-store" });
             if (res.ok) {
               const data = await res.json();
-              candlesByKey[key] = data.data?.candles || [];
+              const rawCandles = data.data?.candles || [];
+              // Strictly isolate candles belonging to today's trading session
+              candlesByKey[key] = rawCandles.filter((c: [string, ...unknown[]]) =>
+                typeof c[0] === "string" && c[0].startsWith(todayISTString)
+              );
               return;
             }
           } catch (e) {
@@ -180,12 +190,19 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      intervalMinutes: step,
-      totalSnapshots: rows.length,
-      rows,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        intervalMinutes: step,
+        totalSnapshots: rows.length,
+        rows,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+        },
+      }
+    );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Internal server error";
     console.error("API /api/options/history error:", error);

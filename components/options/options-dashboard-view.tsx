@@ -79,14 +79,22 @@ export function OptionsDashboardView() {
     return [0, 0, 0];
   }, [strikeMode, customStrikes, atmStrike, selectedIndexConfig.step]);
 
+  // Helper to get today's date in IST (YYYY-MM-DD)
+  const getTodayIST = useCallback(() => {
+    const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }, []);
+
+  const [activeDate, setActiveDate] = useState<string>(getTodayIST());
+
   // Fetch Option Chain & Overview
-  const fetchChain = useCallback(async () => {
+  const fetchChain = useCallback(async (silent: boolean = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const url = `/api/options/chain?instrument_key=${encodeURIComponent(selectedIdxKey)}${
         selectedExpiry ? `&expiry_date=${selectedExpiry}` : ""
       }`;
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: "no-store" });
       const data = await res.json();
 
       if (data.success) {
@@ -103,21 +111,51 @@ export function OptionsDashboardView() {
     } catch (err) {
       console.error("Failed to fetch option chain:", err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [selectedIdxKey, selectedExpiry]);
 
+  // Initial load and automated background cadence polling + morning rollover detector
   useEffect(() => {
-    let ignore = false;
-    async function load() {
-      if (ignore) return;
-      await fetchChain();
+    let isMounted = true;
+    let timeout: ReturnType<typeof setTimeout>;
+
+    async function initialLoad() {
+      if (!isMounted) return;
+      await fetchChain(false);
     }
-    load();
-    return () => {
-      ignore = true;
+
+    initialLoad();
+
+    // Automated 60-second polling aligned with candle close boundary
+    const scheduleNextPoll = () => {
+      const now = Date.now();
+      const msToNextMinute = 60000 - (now % 60000);
+      timeout = setTimeout(async () => {
+        if (!isMounted) return;
+
+        // Day rollover check: if local IST date has rolled over to a new morning
+        const currentISTDate = getTodayIST();
+        if (currentISTDate !== activeDate) {
+          setActiveDate(currentISTDate);
+          setSelectedExpiry(""); // reset selected expiry so it selects the new week's expiry
+          setHistoryRows([]);
+          await fetchChain(false);
+        } else {
+          await fetchChain(true);
+        }
+
+        scheduleNextPoll();
+      }, msToNextMinute + 5000); // +5s settlement buffer
     };
-  }, [fetchChain]);
+
+    scheduleNextPoll();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeout);
+    };
+  }, [fetchChain, getTodayIST, activeDate]);
 
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
 
@@ -145,6 +183,7 @@ export function OptionsDashboardView() {
         const res = await fetch("/api/options/history", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          cache: "no-store",
           body: JSON.stringify({
             strikes: strikesPayload,
             intervalMinutes,
